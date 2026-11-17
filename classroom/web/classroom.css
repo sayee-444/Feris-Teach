@@ -1,4 +1,5 @@
-/* The look of the pages the classroom writes itself: the list of books and a book's index page. */
+/* The look of the pages the classroom writes itself, the list of books and a book's index page,
+   and what the classroom adds to every page of a book. */
 
 .chapter ul.lessons {
 	list-style: none;
@@ -23,4 +24,24 @@
 .mismatches ul {
 	margin: 0.5rem 0 0;
 	font-size: 0.9rem;
+}
+
+/* What the teacher points at (`feris classroom point`): it stands out and draws the eye as it
+   comes. The shell gives it the attribute `data-feris-pointed`. */
+[data-feris-pointed] {
+	outline: 3px solid var(--accent);
+	outline-offset: 0.4rem;
+	border-radius: 4px;
+	animation: feris-pointed 0.6s ease-out 2;
+}
+@keyframes feris-pointed {
+	from {
+		outline-color: transparent;
+		outline-offset: 1.2rem;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	[data-feris-pointed] {
+		animation: none;
+	}
 }

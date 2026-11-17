@@ -18,6 +18,7 @@ All notable changes to Feris-Teach are recorded here. The format follows [Keep a
 - The shared lesson components (stylesheet, quiz, token chips), ported to English as the classroom's components.
 - The student's own books in `student/books/` are served and checked next to the sample book.
 - The classroom state: `feris classroom state` tells the teacher, in one fast call, the page, book and lesson on screen, the sections and paragraphs in view, the selected text and every quiz answer of the class. The sample book's lessons name their sections and paragraphs with stable ids, and the book checker reports a lesson element that has none.
+- Pointing and opening: `feris classroom open <page>` opens a lesson, the glossary or a reference page on the student's screen, and `feris classroom point <id>` highlights an element of the page on screen and scrolls it into view, in place of the one before; `feris classroom point --clear` stops pointing. Each call returns once the classroom has done it, or says clearly why not, such as an element that is not on the page.
 - Lab scenarios get their own environment for the toolbelt and a headless browser.
 - Parts with a narrow interface (ADR-0003): each part has one entry file, other parts import the toolbelt as `#toolbelt`, and the checks fail when an import reaches inside another part. `docs/agents/javascript.md` and `docs/agents/python.md` hold the conventions.
 

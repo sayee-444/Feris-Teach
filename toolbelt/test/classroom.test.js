@@ -119,6 +119,83 @@ test("the classroom's state cannot be read while the classroom is not running", 
 	);
 });
 
+test("the teacher can neither open a page nor point while the classroom is not running", (t) => {
+	const { feris } = student(t);
+
+	const open = feris("classroom", "open", "/books/basic-algebra/glossary.html");
+	const point = feris("classroom", "point", "variable");
+
+	for (const { status, stdout, stderr } of [open, point]) {
+		assert.equal(status, 1);
+		assert.equal(stdout, "");
+		assert.equal(
+			stderr,
+			'feris: the classroom is not running. Start it with "feris classroom start".\n',
+		);
+	}
+});
+
+test("opening a page that is not in the classroom says so", (t) => {
+	const { feris } = student(t);
+	feris("classroom", "start");
+
+	const missing = feris("classroom", "open", "/books/basic-algebra/lessons/nowhere.html");
+	const unknown = feris("classroom", "open", "books/astrology/");
+	const notPage = feris("classroom", "open", "/books/basic-algebra/index.json");
+
+	assert.deepEqual(
+		[missing, unknown, notPage].map(({ status, stderr }) => ({ status, stderr })),
+		[
+			{
+				status: 1,
+				stderr:
+					'feris: there is no page "/books/basic-algebra/lessons/nowhere.html" in the classroom.\n',
+			},
+			{ status: 1, stderr: 'feris: there is no page "/books/astrology/" in the classroom.\n' },
+			{
+				status: 1,
+				stderr: 'feris: there is no page "/books/basic-algebra/index.json" in the classroom.\n',
+			},
+		],
+	);
+});
+
+test("the teacher can neither open a page nor point while no browser shows the classroom", (t) => {
+	const { feris } = student(t);
+	const { url } = opened(feris("classroom", "start").stdout);
+
+	const results = [
+		feris("classroom", "open", "books/basic-algebra/glossary.html"),
+		feris("classroom", "point", "variable"),
+		feris("classroom", "point", "--clear"),
+	];
+
+	for (const { status, stdout, stderr } of results) {
+		assert.equal(status, 1);
+		assert.equal(stdout, "");
+		assert.equal(stderr, `feris: the classroom is not open in a browser. Open ${url} first.\n`);
+	}
+});
+
+test("opening and pointing take exactly one page or one element", (t) => {
+	const { feris } = student(t);
+
+	const results = [
+		feris("classroom", "open"),
+		feris("classroom", "open", "books/", "books/basic-algebra/"),
+		feris("classroom", "point"),
+		feris("classroom", "point", "variable", "coefficient"),
+	];
+
+	for (const { status, stderr } of results) {
+		assert.equal(status, 1);
+		assert.match(stderr, /^Usage: feris classroom <command>/);
+		assert.match(stderr, /open <page>/);
+		assert.match(stderr, /point <id>/);
+		assert.match(stderr, /point --clear/);
+	}
+});
+
 test("before the student opens the classroom, its state says nothing is on screen", (t) => {
 	const { feris } = student(t);
 	feris("classroom", "start");
