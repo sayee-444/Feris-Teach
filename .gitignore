@@ -1,0 +1,16 @@
+# Dependencies and local environments
+node_modules/
+venv/
+.venv/
+__pycache__/
+.ruff_cache/
+.env
+
+# The student folder: profile, books with their state, sources and inbox (ADR-0002)
+student/
+
+# Private notes: working notes and personal agent instructions
+docs/research/
+.scratch/
+CLAUDE.local.md
+.claude/settings.local.json
