@@ -14,7 +14,7 @@ A part's public types live in one known file of that part and are re-exported fr
 
 ## Consequences
 
-- The boundary is held by the linters, not by the runtime: turning a rule off removes it.
+- The boundary is held by the checks, not by the runtime: Biome and Ruff hold most of it, and `test/parts.test.js` holds the paths written in JSDoc types, which Biome does not read. Turning a rule off removes it.
 - Every self-registering set needs its own check of the piece's shape at run time, as the lab has for scenarios.
 - No Python module is named `types.py`: it shadows the standard library when anything runs from inside its folder.
 - Pydantic enters only where the toolbelt and the voice service exchange data, and only once that boundary exists. Inside a part, the type checker is enough.
