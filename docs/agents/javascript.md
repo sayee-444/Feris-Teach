@@ -1,6 +1,6 @@
 # JavaScript
 
-The Node code of Feris-Teach is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler (`npm run check:node`). It is split into **parts** (ADR-0003): today the toolbelt in `toolbelt/` and the lab's scenarios in `lab/scenarios/`.
+The Node code of Feris-Teach is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler (`npm run check:node`). It is split into **parts** (ADR-0003). Today the only part with code of its own is the toolbelt, in `toolbelt/`, which also runs the lab; the lab's scenarios in `lab/scenarios/` are a self-registering set, found at run time.
 
 ## One entry file per part
 
@@ -20,14 +20,16 @@ A part's whole public interface is its `index.js`. Read it to learn the part; ev
 
 ## What holds the boundary
 
-| Reaching inside another part with                                            | Caught by                   |
-| ---------------------------------------------------------------------------- | --------------------------- |
-| An `import` statement, `import()` or `require()`                             | Biome `noRestrictedImports` |
-| An import of an export marked `@package` or `@private`                       | Biome `noPrivateImports`    |
-| An import cycle                                                              | Biome `noImportCycles`      |
-| A path in a JSDoc `@import` or `import("…")` type, which Biome does not read | `test/parts.test.js`        |
+| Reaching inside another part with                                                                 | Caught by                   |
+| ------------------------------------------------------------------------------------------------- | --------------------------- |
+| An `import` statement or `import()`                                                               | Biome `noRestrictedImports` |
+| An import of an export marked `@package` or `@private`                                            | Biome `noPrivateImports`    |
+| An import cycle                                                                                   | Biome `noImportCycles`      |
+| A path in a JSDoc `@import` or `import("…")` type, or in a `require()`, none of which Biome reads | `test/parts.test.js`        |
 
 `test/parts.test.js` also proves the three Biome rules against this repo's `biome.json`, so a rule that is turned off turns a test red.
+
+Both forbid the entry's relative path too: another part names it only as `#name`.
 
 A file loaded by a path built at run time, as the lab loads a scenario, is outside all four. Each self-registering set checks the shape of what it loads itself, as the lab does.
 

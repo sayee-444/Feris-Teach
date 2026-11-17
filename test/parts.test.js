@@ -5,7 +5,15 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -94,31 +102,44 @@ test("an import cycle fails the checks", (t) => {
 	assert.equal(passed, false);
 });
 
-test("no file names the inside of another part, not even in a JSDoc type", () => {
+/** Whether `path` is `dir` or lies inside it. */
+function isInside(/** @type {string} */ dir, /** @type {string} */ path) {
+	return !relative(dir, path).startsWith("..");
+}
+
+test("no file names another part by a relative path, not even in a JSDoc type", () => {
 	/** @type {{ imports: Record<string, string> }} */
 	const manifest = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
-	const entries = Object.values(manifest.imports).map((entry) => resolve(repo, entry));
-	const listed = spawnSync("git", ["ls-files", "-co", "--exclude-standard", "--", "*.js"], {
-		cwd: repo,
-		encoding: "utf8",
-	});
-	const files = listed.stdout.split("\n").filter(Boolean);
+	const parts = Object.values(manifest.imports).map((entry) => dirname(resolve(repo, entry)));
+	const git = spawnSync(
+		"git",
+		["ls-files", "-co", "--exclude-standard", "--", "*.js", "*.mjs", "*.cjs"],
+		{ cwd: repo, encoding: "utf8" },
+	);
+	assert.equal(git.status, 0, `git could not list the files: ${git.error ?? git.stderr}`);
+	// This file's own fixtures name such paths on purpose; a file deleted but not yet committed
+	// is still listed.
+	const self = relative(repo, fileURLToPath(import.meta.url)).replaceAll("\\", "/");
+	const files = git.stdout
+		.split("\n")
+		.filter((file) => file !== "" && file !== self && existsSync(join(repo, file)));
 	assert.notEqual(files.length, 0, "git listed no JavaScript file");
 
-	// Biome reads import statements only, so a path in a JSDoc `@import` or `import("…")` type
-	// gets past it. This reads every relative path a file names, wherever it is written.
-	const reaches = [];
+	// Biome reads `import` statements and `import()` only, so a path in a JSDoc `@import` or
+	// `import("…")` type, or in a `require()`, gets past it. This reads every relative path a
+	// file names, wherever it is written.
+	const named = /(?:\bfrom|\bimport\s*\(|\brequire\s*\()\s*["'`](\.[^"'`\n]*)["'`]/g;
+	const offences = [];
 	for (const file of files) {
-		const source = readFileSync(join(repo, file), "utf8");
-		for (const [, specifier] of source.matchAll(/(?:from\s+|import\()["'](\.[^"'\n]*)["']/g)) {
-			const target = resolve(repo, dirname(file), String(specifier));
-			const entry = entries.find((entry) => !relative(dirname(entry), target).startsWith(".."));
-			if (entry === undefined || target === entry) continue;
-			if (relative(dirname(entry), resolve(repo, file)).startsWith("..")) {
-				reaches.push(`${file} names "${specifier}"`);
+		const from = resolve(repo, file);
+		for (const [, specifier] of readFileSync(from, "utf8").matchAll(named)) {
+			const target = resolve(dirname(from), String(specifier));
+			const part = parts.find((dir) => isInside(dir, target));
+			if (part !== undefined && !isInside(part, from)) {
+				offences.push(`${file} names "${specifier}"`);
 			}
 		}
 	}
 
-	assert.deepEqual(reaches, []);
+	assert.deepEqual(offences, []);
 });

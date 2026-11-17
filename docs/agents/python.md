@@ -42,7 +42,7 @@ The voice service is one **part** (ADR-0003). Its whole public interface is `voi
 
 A type lives beside the code that owns it. Move it to a module of its own only to break an import cycle, and that module imports nothing from the package.
 
-An import used only in annotations goes under `if TYPE_CHECKING:`; the `TC` rules ask for it and `npm run format` moves it.
+An import that only the type checker needs may go under `if TYPE_CHECKING:`, which also breaks an import cycle between two modules of the part. The `TC` rules keep that block honest: an import in it that is used at run time fails `TC004`.
 
 **Pydantic** enters only where the toolbelt and the voice service exchange data, and only once that boundary exists. Inside the part, basedpyright is enough. When Pydantic arrives, set `lint.flake8-type-checking.runtime-evaluated-base-classes` in `ruff.toml`, because Pydantic reads annotations at run time and the `TC` rules would otherwise move its imports away.
 
