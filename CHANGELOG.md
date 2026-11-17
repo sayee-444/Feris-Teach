@@ -17,6 +17,7 @@ All notable changes to Feris-Teach are recorded here. The format follows [Keep a
 - A book's machine-readable index (`index.json`) and the book checker, `feris book check <book>`, which reports every mismatch between the index and the files.
 - The shared lesson components (stylesheet, quiz, token chips), ported to English as the classroom's components.
 - The student's own books in `student/books/` are served and checked next to the sample book.
+- The classroom state: `feris classroom state` tells the teacher, in one fast call, the page, book and lesson on screen, the sections and paragraphs in view, the selected text and every quiz answer of the class. The sample book's lessons name their sections and paragraphs with stable ids, and the book checker reports a lesson element that has none.
 - Lab scenarios get their own environment for the toolbelt and a headless browser.
 - Parts with a narrow interface (ADR-0003): each part has one entry file, other parts import the toolbelt as `#toolbelt`, and the checks fail when an import reaches inside another part. `docs/agents/javascript.md` and `docs/agents/python.md` hold the conventions.
 

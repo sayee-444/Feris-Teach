@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { get } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -103,6 +104,67 @@ test("stopping a classroom that is not running says so and succeeds", (t) => {
 
 	assert.equal(status, 0);
 	assert.equal(stdout, "The classroom is not running.\n");
+});
+
+test("the classroom's state cannot be read while the classroom is not running", (t) => {
+	const { feris } = student(t);
+
+	const { status, stdout, stderr } = feris("classroom", "state");
+
+	assert.equal(status, 1);
+	assert.equal(stdout, "");
+	assert.equal(
+		stderr,
+		'feris: the classroom is not running. Start it with "feris classroom start".\n',
+	);
+});
+
+test("before the student opens the classroom, its state says nothing is on screen", (t) => {
+	const { feris } = student(t);
+	feris("classroom", "start");
+
+	const { status, stdout, stderr } = feris("classroom", "state");
+
+	assert.equal(stderr, "");
+	assert.equal(status, 0);
+	assert.deepEqual(JSON.parse(stdout), {
+		page: null,
+		book: null,
+		lesson: null,
+		view: { sections: [], paragraphs: [] },
+		selection: null,
+		answers: [],
+	});
+});
+
+test("another site in the student's browser can neither read nor change the classroom state", async (t) => {
+	const { feris } = student(t);
+	const { url } = opened(feris("classroom", "start").stdout);
+	const state = new URL("control/state", url);
+	const view = new URL("shell/view", url);
+	const forged = JSON.stringify({
+		page: "/books/basic-algebra/glossary.html",
+		view: { sections: [], paragraphs: [] },
+		selection: null,
+	});
+
+	const read = await fetch(state, { headers: { origin: "http://example.com" } });
+	// A site whose name is made to point at 127.0.0.1 sends its own name as the host; `fetch`
+	// always sends the real one, so this request goes through `node:http`.
+	const rebound = await new Promise((resolve, reject) => {
+		get(state, { headers: { host: `example.com:${state.port}` } }, (res) => {
+			res.resume();
+			resolve({ status: res.statusCode });
+		}).on("error", reject);
+	});
+	const change = await fetch(view, {
+		method: "POST",
+		headers: { origin: "http://example.com", "content-type": "text/plain" },
+		body: forged,
+	});
+
+	assert.deepEqual([read.status, rebound.status, change.status], [403, 403, 403]);
+	assert.equal(JSON.parse(feris("classroom", "state").stdout).page, null);
 });
 
 test("a page that is not in a book is not found", async (t) => {

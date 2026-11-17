@@ -1,5 +1,6 @@
 /**
- * Books on disk: reading a book's index and checking it against the files the book holds.
+ * Books on disk: reading a book's index and checking it against the files the book holds, and
+ * checking that each lesson names its sections and paragraphs, which the view and pointing go by.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
@@ -65,6 +66,57 @@ function pageTitle(/** @type {string} */ html) {
 		.trim();
 }
 
+/** Elements that never hold anything, so they have no closing tag. */
+const VOID = new Set("area base br col embed hr img input link meta source track wbr".split(" "));
+
+/**
+ * Says what keeps a lesson's sections and paragraphs from being named: a `<section>` without an
+ * `id`, an element right inside a section without one (its heading aside), and an `id` given
+ * twice. It reads the tags without a full HTML parser, so a page whose tags it cannot follow is
+ * reported for less, never for more.
+ *
+ * @param {string} html The lesson's page
+ * @returns {string[]} One line per flaw, in the order of the page, then the ids given twice
+ */
+function idFlaws(html) {
+	/** @type {string[]} */
+	const flaws = [];
+	/** @type {{ name: string, id: string | undefined }[]} */
+	const open = [];
+	const seen = new Set();
+	const twice = new Set();
+	const text = html
+		.replace(/<!--[\s\S]*?-->/g, "")
+		.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "");
+	for (const [, closing, tag, attributes] of text.matchAll(/<(\/?)([a-zA-Z][\w-]*)([^>]*)>/g)) {
+		const name = String(tag).toLowerCase();
+		if (closing) {
+			// A closing tag closes whatever was left open inside its element, as browsers do.
+			const at = open.findLastIndex((element) => element.name === name);
+			if (at !== -1) open.length = at;
+			continue;
+		}
+		const id = /\sid\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i.exec(String(attributes));
+		const value = id ? (id[1] ?? id[2] ?? id[3] ?? "") : undefined;
+		if (value) {
+			if (seen.has(value)) twice.add(value);
+			seen.add(value);
+		}
+		const parent = open.at(-1);
+		if (name === "section" && !value) {
+			flaws.push("a <section> has no id");
+		} else if (parent?.name === "section" && !/^h[1-6]$/.test(name) && !value) {
+			const where = parent.id ? ` in the section "${parent.id}"` : "";
+			flaws.push(`a <${name}>${where} has no id`);
+		}
+		if (!VOID.has(name) && !String(attributes).trimEnd().endsWith("/")) {
+			open.push({ name, id: value });
+		}
+	}
+	for (const value of twice) flaws.push(`two elements have the id "${value}"`);
+	return flaws;
+}
+
 /** Every page in a book's folder, as paths from the folder written with `/`. */
 function pagesOnDisk(/** @type {string} */ dir) {
 	return readdirSync(dir, { recursive: true, encoding: "utf8" })
@@ -109,9 +161,14 @@ export function checkBook(dir) {
 	/** @type {string[]} */
 	const mismatches = [];
 	const lessons = index.chapters.flatMap((chapter) => chapter.lessons);
-	/** @type {{ file: string, title?: string, planned: boolean }[]} */
+	/** @type {{ file: string, title?: string, planned: boolean, lesson?: boolean }[]} */
 	const pages = [
-		...lessons.map(({ file, title, status }) => ({ file, title, planned: status === "planned" })),
+		...lessons.map(({ file, title, status }) => ({
+			file,
+			title,
+			planned: status === "planned",
+			lesson: true,
+		})),
 		{ file: index.glossary, planned: false },
 		...index.reference.map(({ file, title }) => ({ file, title, planned: false })),
 	];
@@ -145,11 +202,15 @@ export function checkBook(dir) {
 			continue;
 		}
 		if (page.title === undefined) continue;
-		const title = pageTitle(readFileSync(path, "utf8"));
+		const html = readFileSync(path, "utf8");
+		const title = pageTitle(html);
 		if (title === undefined) {
 			mismatches.push(`${file}: the page has no <title>; the index calls it "${page.title}"`);
 		} else if (title !== page.title) {
 			mismatches.push(`${file}: the index calls it "${page.title}", but its <title> is "${title}"`);
+		}
+		if (page.lesson) {
+			for (const flaw of idFlaws(html)) mismatches.push(`${file}: ${flaw}`);
 		}
 	}
 

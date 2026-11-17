@@ -69,6 +69,53 @@
  */
 
 /**
+ * What the student is looking at and has answered: the classroom state, which the teacher reads
+ * in one call. Pages are paths in the classroom (`/books/<book>/<file>`); sections, paragraphs
+ * and quizzes are named by their `id` in the page.
+ *
+ * @typedef {object} ClassroomState
+ * @property {string | null} page The page on screen, or nothing when the classroom is not open
+ * @property {string | null} book The name of the book that page belongs to, if any
+ * @property {string | null} lesson The id of the lesson that page is, by the book's index, if it
+ *   is one
+ * @property {View} view
+ * @property {Selection | null} selection The text the student has selected, if any
+ * @property {Answer[]} answers Every quiz answer of the class, in the order they were given
+ */
+
+/**
+ * The part of the page the student has on screen: the sections and the paragraphs of which some
+ * part is in sight, in the order of the page. A paragraph is any element with an `id` right
+ * inside a section with an `id`: a paragraph, a note, a list, a table, a figure, a quiz.
+ *
+ * @typedef {object} View
+ * @property {string[]} sections
+ * @property {string[]} paragraphs
+ */
+
+/**
+ * Text the student has selected.
+ *
+ * @typedef {object} Selection
+ * @property {string} text
+ * @property {string | null} within The id of the paragraph, or else of the section, where the
+ *   selection starts
+ */
+
+/**
+ * One answer to a quiz or a prediction.
+ *
+ * @typedef {object} Answer
+ * @property {string} page The page the quiz is on
+ * @property {string | null} book
+ * @property {string | null} lesson
+ * @property {string | null} quiz The quiz's id, when it has one
+ * @property {string} question The quiz's question, as text
+ * @property {string} answer The option the student chose, or the number they typed
+ * @property {boolean} correct
+ */
+
+/**
  * A classroom being served.
  *
  * @typedef {object} Classroom

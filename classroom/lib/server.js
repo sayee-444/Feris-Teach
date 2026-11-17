@@ -7,6 +7,9 @@
  *   /books/                the list of books
  *   /books/<book>/         a book's index page
  *   /books/<book>/<file>   a file of a book; its pages get the components and live reload
+ *   /shell/view            where the shell reports the view and the selection (POST)
+ *   /shell/answer          where the shell reports a quiz answer (POST)
+ *   /control/state         the classroom state, for the teacher's toolbelt
  *   /<file>                the classroom's own stylesheets and scripts, from `web/`
  *
  * Everything under /books/ shows in the shell's frame; only the frame reloads.
@@ -14,7 +17,6 @@
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
 import { checkBook, readIndex } from "./book.js";
 import {
 	bookBar,
@@ -26,6 +28,7 @@ import {
 	shellPage,
 	THEME,
 } from "./pages.js";
+import { answerReport, classRecord, lessonAt, PATHS, viewReport } from "./state.js";
 
 /** @import { IncomingMessage, ServerResponse } from "node:http" */
 /** @import { HtmlTagDescriptor, Plugin, ViteDevServer } from "vite" */
@@ -85,6 +88,56 @@ async function sendHtml(
 	res.end(await server.transformIndexHtml(url, html));
 }
 
+/** Answers with JSON. */
+function sendJson(/** @type {ServerResponse} */ res, /** @type {unknown} */ value) {
+	res.setHeader("Content-Type", "application/json; charset=utf-8");
+	res.setHeader("Cache-Control", "no-store");
+	res.end(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+/** Answers with a status and nothing more. */
+function sendStatus(/** @type {ServerResponse} */ res, /** @type {number} */ status) {
+	res.statusCode = status;
+	res.end();
+}
+
+/** The most a report from the shell may weigh. */
+const REPORT_LIMIT = 64 * 1024;
+
+/**
+ * Reads a request's body as JSON.
+ *
+ * @param {IncomingMessage} req
+ * @returns {Promise<unknown>} The parsed body, or nothing when it is not JSON or is too long
+ */
+async function readJson(req) {
+	/** @type {Buffer[]} */
+	const chunks = [];
+	let size = 0;
+	for await (const chunk of req) {
+		size += chunk.length;
+		if (size > REPORT_LIMIT) return undefined;
+		chunks.push(chunk);
+	}
+	try {
+		return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Whether a request comes from the classroom itself or from a program on this machine, and not
+ * from another site open in the student's browser: the class's state is the student's own.
+ */
+function isOwn(/** @type {IncomingMessage} */ req) {
+	const host = req.headers.host ?? "";
+	const hostname = host.replace(/:\d+$/, "");
+	if (hostname !== "127.0.0.1" && hostname !== "localhost") return false;
+	const origin = req.headers.origin;
+	return origin === undefined || origin === `http://${host}`;
+}
+
 /** Answers that there is nothing here. */
 function notFound(/** @type {ServerResponse} */ res) {
 	res.statusCode = 404;
@@ -121,6 +174,14 @@ function classroom(booksDirs) {
 		}
 		return undefined;
 	};
+
+	const record = classRecord((page) => {
+		const target = bookPath(page);
+		const dir = target && findBooks(dirs).get(target.name);
+		if (!target || !dir) return { book: null, lesson: null };
+		const { index } = readIndex(dir);
+		return { book: target.name, lesson: index ? lessonAt(index, target.file ?? "") : null };
+	});
 
 	return {
 		name: "feris-classroom",
@@ -192,7 +253,33 @@ function classroom(booksDirs) {
 	}
 
 	/**
-	 * Serves the shell, its bar and the books; anything else goes on to Vite.
+	 * Answers the teacher's toolbelt with the classroom state, and takes the shell's reports.
+	 *
+	 * @param {IncomingMessage} req
+	 * @param {ServerResponse} res
+	 * @param {string} path
+	 */
+	async function control(req, res, path) {
+		if (!isOwn(req)) return sendStatus(res, 403);
+		if (path === PATHS.state) {
+			return req.method === "GET" ? sendJson(res, record.state()) : sendStatus(res, 405);
+		}
+		if (req.method !== "POST") return sendStatus(res, 405);
+		const body = await readJson(req);
+		if (path === PATHS.view) {
+			const report = viewReport(body);
+			if (report === undefined) return sendStatus(res, 400);
+			record.see(report);
+		} else {
+			const report = answerReport(body);
+			if (report === undefined) return sendStatus(res, 400);
+			record.answer(report);
+		}
+		return sendStatus(res, 204);
+	}
+
+	/**
+	 * Serves the shell, its bar, the classroom state and the books; anything else goes on to Vite.
 	 *
 	 * @param {ViteDevServer} server
 	 * @param {IncomingMessage} req
@@ -217,6 +304,9 @@ function classroom(booksDirs) {
 			res.setHeader("Content-Type", "text/html; charset=utf-8");
 			res.setHeader("Cache-Control", "no-store");
 			return res.end(bar(url.searchParams.get("page") ?? ""));
+		}
+		if (path === PATHS.state || path === PATHS.view || path === PATHS.answer) {
+			return control(req, res, path);
 		}
 		if (path === "/books/") {
 			const books = [...findBooks(dirs)].map(([name, dir]) => ({
@@ -266,6 +356,8 @@ function classroom(booksDirs) {
  * @returns {Promise<Classroom>}
  */
 export async function startClassroom({ booksDirs, port }) {
+	// Loaded here, so that a part that only reads the classroom state never waits for Vite.
+	const { createServer } = await import("vite");
 	const server = await createServer({
 		configFile: false,
 		root: WEB,
