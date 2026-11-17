@@ -39,6 +39,8 @@ A scenario is a folder in `lab/scenarios/` holding a `scenario.js`, and the fold
 
 To add a scenario, copy `lab/scenarios/example-automatic/` or `lab/scenarios/example-human/` and change it. The lab finds it by itself. Both `check` and `present` receive `feris`, which runs the toolbelt as a separate process, the way the teacher does.
 
+Two environment variables point the lab elsewhere, which is how its own tests run it: `FERIS_SCENARIOS_DIR` replaces `lab/scenarios/`, and `FERIS_STUDENT_DIR` replaces `student/`.
+
 ## How work flows
 
 1. **Every change starts as a GitHub issue.** Issues carry one of the triage labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human` or `wontfix`.

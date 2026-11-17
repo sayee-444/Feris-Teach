@@ -24,7 +24,7 @@ Work out which one the human wants before acting.
 
 ## Done means checked
 
-Run `npm run check` (lint, formatting and types for Node and Python), `npm test` and `npm run feris -- lab run --automatic` (every automatic scenario) before you call a change done. Both must pass on Linux and Windows, so use `node:path` and `node:url` for paths, and keep shell-specific syntax out of the npm scripts.
+Run `npm run check` (lint, formatting and types for Node and Python), `npm test` and `npm run feris -- lab run --automatic` (every automatic scenario) before you call a change done. All must pass on Linux and Windows, so use `node:path` and `node:url` for paths, and keep shell-specific syntax out of the npm scripts.
 
 ## Personal instructions
 

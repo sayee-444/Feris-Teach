@@ -217,9 +217,51 @@ test("the lab explains its commands when given none it knows", (t) => {
 });
 
 test("the lab ships one template scenario of each kind", () => {
-	const result = spawnSync(process.execPath, [bin, "lab", "list"], { encoding: "utf8" });
+	const { FERIS_SCENARIOS_DIR: _, ...env } = process.env;
+	const result = spawnSync(process.execPath, [bin, "lab", "list"], { encoding: "utf8", env });
 
 	assert.equal(result.status, 0);
 	assert.match(result.stdout, /^example-automatic +automatic /m);
 	assert.match(result.stdout, /^example-human +human /m);
+});
+
+test("one broken scenario does not stop the others from running", (t) => {
+	const { feris } = lab(t, { broken: "export default { kind: 'magic' };\n", sums: PASSING });
+
+	const { status, stdout, stderr } = feris(["lab", "run", "--automatic"]);
+
+	assert.equal(status, 1);
+	assert.equal(stdout, "PASS sums: Two and two make four\n1 passed, 1 failed\n");
+	assert.match(stderr, /^FAIL broken\n {2}scenario "broken" is not valid: /);
+});
+
+test("one broken scenario still shows in the list, beside the others", (t) => {
+	const { feris } = lab(t, { broken: "export default { kind: 'magic' };\n", sums: PASSING });
+
+	const { status, stdout } = feris(["lab", "list"]);
+
+	assert.equal(status, 1);
+	assert.match(stdout, /^broken +invalid +scenario "broken" is not valid: /);
+	assert.match(stdout, /\nsums +automatic +Two and two make four\n$/);
+});
+
+test("running every automatic scenario fails when there is none to run", (t) => {
+	const { feris } = lab(t, { greeting: HUMAN });
+
+	const { status, stderr } = feris(["lab", "run", "--automatic"]);
+
+	assert.equal(status, 1);
+	assert.equal(stderr, "feris: the lab has no automatic scenario to run.\n");
+});
+
+test("a human scenario that cannot show what to judge fails and says why", (t) => {
+	const { feris, ratings } = lab(t, {
+		greeting: HUMAN.replace('console.log("Hello, student!")', 'throw new Error("no voice")'),
+	});
+
+	const { status, stderr } = feris(["lab", "run", "greeting"], "4\nFine\n");
+
+	assert.equal(status, 1);
+	assert.equal(stderr, 'feris: scenario "greeting" could not be presented: no voice\n');
+	assert.throws(() => ratings("greeting"), { code: "ENOENT" });
 });

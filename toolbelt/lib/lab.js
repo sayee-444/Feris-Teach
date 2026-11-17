@@ -6,7 +6,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -132,11 +132,19 @@ async function load(name) {
 async function list() {
 	const names = scenarioNames();
 	const width = Math.max(0, ...names.map((name) => name.length));
+	let invalid = 0;
 	for (const name of names) {
-		const { kind, title } = await load(name);
-		console.log(`${name.padEnd(width)}  ${kind.padEnd("automatic".length)}  ${title}`);
+		const row = await load(name).then(
+			({ kind, title }) => `${kind.padEnd("automatic".length)}  ${title}`,
+			(error) => {
+				if (!(error instanceof LabError)) throw error;
+				invalid++;
+				return `invalid    ${error.message}`;
+			},
+		);
+		console.log(`${name.padEnd(width)}  ${row}`);
 	}
-	return 0;
+	return invalid === 0 ? 0 : 1;
 }
 
 /** Indents every line of a message under the line that announces it. */
@@ -171,7 +179,12 @@ async function runAutomatic(name, scenario) {
  */
 async function runHuman(name, scenario) {
 	console.log(`${name}: ${scenario.title}\n`);
-	await scenario.present(tools);
+	try {
+		await scenario.present(tools);
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		throw new LabError(`scenario "${name}" could not be presented: ${reason}`);
+	}
 	console.log(`\nChecklist:\n${scenario.checklist.map((item) => `  - ${item}`).join("\n")}\n`);
 
 	const answers = createInterface({ input: process.stdin });
@@ -200,7 +213,7 @@ async function runHuman(name, scenario) {
 			rating: Number(rating),
 			comments,
 		};
-		mkdirSync(join(studentDir(), "lab"), { recursive: true });
+		mkdirSync(dirname(file), { recursive: true });
 		appendFileSync(file, `${JSON.stringify(entry)}\n`);
 		console.log(`Saved to ${file}`);
 	} finally {
@@ -221,11 +234,18 @@ async function runAutomaticOnes() {
 	let passed = 0;
 	let failed = 0;
 	for (const name of scenarioNames()) {
-		const scenario = await load(name);
-		if (scenario.kind !== "automatic") continue;
-		if (await runAutomatic(name, scenario)) passed++;
-		else failed++;
+		try {
+			const scenario = await load(name);
+			if (scenario.kind !== "automatic") continue;
+			if (await runAutomatic(name, scenario)) passed++;
+			else failed++;
+		} catch (error) {
+			if (!(error instanceof LabError)) throw error;
+			console.error(`FAIL ${name}\n${indent(error.message)}`);
+			failed++;
+		}
 	}
+	if (passed + failed === 0) throw new LabError("the lab has no automatic scenario to run.");
 	console.log(`${passed} passed, ${failed} failed`);
 	return failed === 0 ? 0 : 1;
 }
