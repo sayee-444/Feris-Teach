@@ -3,16 +3,16 @@
  *
  * URLs:
  *   /                      the home page, listing the books
- *   /books/<book>/         a book's contents
+ *   /books/<book>/         a book's index page
  *   /books/<book>/<file>   a file of a book; its pages get the classroom's bar and components
  *   /<file>                the classroom's own stylesheets and scripts, from `web/`
  */
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, posix, relative, resolve, sep } from "node:path";
+import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import { checkBook, readIndex } from "./book.js";
-import { bookBar, bookUrl, brokenBookPage, contentsPage, homePage } from "./pages.js";
+import { bookBar, bookUrl, brokenBookPage, homePage, indexPage } from "./pages.js";
 
 /** @import { IncomingMessage, ServerResponse } from "node:http" */
 /** @import { HtmlTagDescriptor, Plugin, ViteDevServer } from "vite" */
@@ -20,7 +20,7 @@ import { bookBar, bookUrl, brokenBookPage, contentsPage, homePage } from "./page
 
 const WEB = fileURLToPath(new URL("../web", import.meta.url));
 
-const TYPES = /** @type {Record<string, string>} */ ({
+const CONTENT_TYPES = /** @type {Record<string, string>} */ ({
 	".css": "text/css; charset=utf-8",
 	".gif": "image/gif",
 	".jpeg": "image/jpeg",
@@ -35,14 +35,16 @@ const TYPES = /** @type {Record<string, string>} */ ({
 
 /**
  * Sets the theme before the page paints, so that a student who chose dark never sees a flash
- * of light. The choice is kept in the browser and shared by every page of the classroom.
+ * of light. The choice is kept in the browser and shared by every page of the classroom; the
+ * switch in `web/classroom.js` writes it under the same key.
  */
 const THEME = `try{var t=localStorage.getItem("feris-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
 /** Whether `path` is `dir` or lies inside it. */
 function isInside(/** @type {string} */ dir, /** @type {string} */ path) {
 	const rel = relative(dir, path);
-	return rel === "" || (!rel.startsWith(`..${sep}`) && rel !== ".." && !posix.isAbsolute(rel));
+	// On Windows a path on another drive comes back absolute.
+	return rel === "" || (!rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel));
 }
 
 /**
@@ -120,11 +122,13 @@ function classroom(booksDirs) {
 		configureServer(server) {
 			server.watcher.add(dirs);
 			server.watcher.on("all", (_event, path) => {
-				const at = owner(resolve(path));
-				if (at === undefined) return;
+				const changed = owner(resolve(path));
+				if (changed === undefined) return;
 				// A changed page reloads only where it is open; anything else (the index, an image,
 				// a new book) can change every page, so every page reloads.
-				const page = at.file.endsWith(".html") ? `/books/${at.name}/${at.file}` : "*";
+				const page = changed.file.endsWith(".html")
+					? `/books/${changed.name}/${changed.file}`
+					: "*";
 				server.ws.send({ type: "full-reload", path: page });
 			});
 
@@ -165,14 +169,14 @@ function classroom(booksDirs) {
 						}),
 				),
 			];
-			const at = bookPath(decodeURIComponent(path));
-			const dir = at && findBooks(dirs).get(at.name);
+			const target = bookPath(decodeURIComponent(path));
+			const dir = target && findBooks(dirs).get(target.name);
 			const { index } = dir ? readIndex(dir) : { index: undefined };
-			if (at && index) {
+			if (target && index) {
 				tags.push({
 					tag: "nav",
 					attrs: { class: "classroom-bar" },
-					children: bookBar(at.name, index, at.file ?? ""),
+					children: bookBar(target.name, index, target.file ?? ""),
 					injectTo: "body-prepend",
 				});
 			}
@@ -204,31 +208,34 @@ function classroom(booksDirs) {
 			return sendHtml(server, res, url.pathname, homePage(books));
 		}
 
-		const at = bookPath(path);
-		if (at === undefined) return next();
-		const dir = findBooks(dirs).get(at.name);
+		const target = bookPath(path);
+		if (target === undefined) return next();
+		const dir = findBooks(dirs).get(target.name);
 		if (dir === undefined) return notFound(res);
-		if (at.file === undefined) {
+		if (target.file === undefined) {
 			res.statusCode = 301;
-			res.setHeader("Location", bookUrl(at.name));
+			res.setHeader("Location", bookUrl(target.name));
 			return res.end();
 		}
-		if (at.file === "") {
+		if (target.file === "") {
 			const { index, mismatches } = checkBook(dir);
 			const html = index
-				? contentsPage(at.name, index, mismatches)
-				: brokenBookPage(at.name, mismatches);
+				? indexPage(target.name, index, mismatches)
+				: brokenBookPage(target.name, mismatches);
 			return sendHtml(server, res, url.pathname, html);
 		}
 
-		const file = resolve(dir, at.file);
+		const file = resolve(dir, target.file);
 		if (!isInside(dir, file) || !existsSync(file) || !statSync(file).isFile()) {
 			return notFound(res);
 		}
 		if (extname(file) === ".html") {
 			return sendHtml(server, res, url.pathname, readFileSync(file, "utf8"));
 		}
-		res.setHeader("Content-Type", TYPES[extname(file).toLowerCase()] ?? "application/octet-stream");
+		res.setHeader(
+			"Content-Type",
+			CONTENT_TYPES[extname(file).toLowerCase()] ?? "application/octet-stream",
+		);
 		res.setHeader("Cache-Control", "no-store");
 		createReadStream(file).pipe(res);
 	}
@@ -248,7 +255,14 @@ export async function startClassroom({ booksDirs, port }) {
 		appType: "custom",
 		logLevel: "warn",
 		clearScreen: false,
-		server: { host: "127.0.0.1", port: port ?? 0, strictPort: true },
+		server: {
+			host: "127.0.0.1",
+			port: port ?? 0,
+			strictPort: true,
+			// Vite serves only the classroom's own files; the books go through `serve` above. Its
+			// default would serve any file in the repo, the student folder among them, as /@fs/….
+			fs: { strict: true, allow: [WEB] },
+		},
 		optimizeDeps: { noDiscovery: true, include: [] },
 		plugins: [classroom(booksDirs)],
 	});

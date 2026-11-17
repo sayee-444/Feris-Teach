@@ -2,7 +2,8 @@
  * The classroom's script on every page: the switch between light and dark.
  *
  * The page starts in the system's theme. The switch picks the other one and keeps the choice in
- * the browser, where every page of the classroom reads it before painting.
+ * the browser, where every page of the classroom reads it before painting (the `THEME` script in
+ * `lib/server.js` reads the same key).
  */
 
 const root = document.documentElement;

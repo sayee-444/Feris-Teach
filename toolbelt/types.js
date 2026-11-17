@@ -3,6 +3,8 @@
  * toolbelt's own code needs live beside that code.
  */
 
+/** @import { Browser } from "playwright" */
+
 /**
  * A scenario that checks itself.
  *
@@ -38,7 +40,7 @@
  * @property {Record<string, string>} env Environment variables added to every `feris` run of
  *   this scenario, such as `FERIS_STUDENT_DIR` pointing at a temporary student folder. Empty at
  *   the start; the scenario fills it.
- * @property {() => Promise<import("playwright").Browser>} browser A headless Chromium, launched
+ * @property {() => Promise<Browser>} browser A headless Chromium, launched
  *   on the first call and closed by the lab when the scenario is over
  */
 

@@ -92,7 +92,7 @@ export default {
 			edit(join(book, "index.json"), '"title": "Basic algebra"', '"title": "Algebra, edited"');
 			await waitForText(
 				second,
-				"nav.classroom-bar .contents",
+				"nav.classroom-bar .index",
 				"Algebra, edited",
 				"editing the index did not refresh the pages of the book",
 			);

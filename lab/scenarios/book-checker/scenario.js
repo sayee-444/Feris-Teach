@@ -1,6 +1,6 @@
 /**
  * The book checker passes on the sample book and reports each mismatch on a broken copy of it,
- * both from the toolbelt and on the book's contents page in a real headless browser.
+ * both from the toolbelt and on the book's index page in a real headless browser.
  */
 import assert from "node:assert/strict";
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -47,7 +47,7 @@ export default {
 			const page = await (await browser()).newPage();
 			await page.goto(`${url}books/broken/`);
 			const shown = await page.locator(".mismatches li").allTextContents();
-			assert.deepEqual(shown, MISMATCHES, "the contents page does not show the mismatches");
+			assert.deepEqual(shown, MISMATCHES, "the index page does not show the mismatches");
 		} finally {
 			feris("classroom", "stop");
 			rmSync(root, { recursive: true, force: true });

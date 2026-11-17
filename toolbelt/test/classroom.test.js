@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -114,4 +114,20 @@ test("the classroom serves the student's books next to the sample book", async (
 	assert.match(home, /href="\/books\/basic-algebra\/"/);
 	assert.match(home, /href="\/books\/my-algebra\/"/);
 	assert.equal(lesson.status, 200);
+});
+
+test("the classroom serves no file outside the books and its own, not even through Vite", async (t) => {
+	const { feris, dir } = student(t);
+	const { url } = opened(feris("classroom", "start").stdout);
+	const repo = fileURLToPath(new URL("../..", import.meta.url)).replaceAll("\\", "/");
+	const secret = join(dir, "secret.txt");
+	writeFileSync(secret, "private");
+
+	const statuses = [];
+	for (const path of [`${repo}package.json`, secret.replaceAll("\\", "/")]) {
+		const response = await fetch(new URL(`@fs/${path.replace(/^\//, "")}`, url));
+		statuses.push(response.status);
+	}
+
+	assert.equal(statuses.includes(200), false, `a file outside the books was served: ${statuses}`);
 });

@@ -17,9 +17,8 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { startClassroom } from "#classroom";
-import { booksDirs, studentDir } from "./paths.js";
+import { booksDirs, ferisBin, studentBooksDir, studentDir } from "./paths.js";
 
 const USAGE = `Usage: feris classroom <command> [options]
 
@@ -113,6 +112,8 @@ async function serve(/** @type {number | undefined} */ port) {
 	const other = running();
 	if (other) throw new ClassroomError(`the classroom is already running. ${openLine(other)}`);
 
+	// The folder exists from the start, so that a book the student makes later is watched too.
+	mkdirSync(studentBooksDir(), { recursive: true });
 	const classroom = await startClassroom({ booksDirs: booksDirs(), port });
 	/** @type {Running} */
 	const state = { pid: process.pid, url: classroom.url };
@@ -145,8 +146,12 @@ async function start(/** @type {number | undefined} */ port) {
 
 	mkdirSync(runDir(), { recursive: true });
 	const log = openSync(logFile(), "w");
-	const bin = fileURLToPath(new URL("../bin/feris.js", import.meta.url));
-	const args = [bin, "classroom", "serve", ...(port === undefined ? [] : ["--port", String(port)])];
+	const args = [
+		ferisBin(),
+		"classroom",
+		"serve",
+		...(port === undefined ? [] : ["--port", String(port)]),
+	];
 	const child = spawn(process.execPath, args, {
 		detached: true,
 		stdio: ["ignore", log, log, "ipc"],

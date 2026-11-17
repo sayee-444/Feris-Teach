@@ -50,7 +50,7 @@ export default {
 			await page.emulateMedia({ colorScheme: "light" });
 			await page.goto(url);
 			await page.getByRole("link", { name: "Basic algebra" }).click();
-			assert.equal(await heading(page), "Basic algebra", "the book's contents did not open");
+			assert.equal(await heading(page), "Basic algebra", "the book's index page did not open");
 			const lessons = await page.locator(".chapter ul.lessons li").allTextContents();
 			assert.deepEqual(
 				lessons.map((lesson) => lesson.trim()),
@@ -61,7 +61,7 @@ export default {
 					"2.2 Graphing a line",
 					"2.3 Systems of two equations (planned)",
 				],
-				"the contents do not list the lessons in the index's order",
+				"the index page does not list the lessons in the index's order",
 			);
 			assert.equal(await page.locator("li.planned a").count(), 0, "a planned lesson is a link");
 
@@ -76,8 +76,12 @@ export default {
 			assert.equal(await heading(page), "Glossary", "the bar did not open the glossary");
 			await bar.locator("a.reference").click();
 			assert.equal(await heading(page), "Rules at a glance", "the bar did not open the reference");
-			await bar.locator("a.contents").click();
-			assert.equal(await heading(page), "Basic algebra", "the bar did not go back to the contents");
+			await bar.locator("a.index").click();
+			assert.equal(
+				await heading(page),
+				"Basic algebra",
+				"the bar did not go back to the index page",
+			);
 
 			await page.getByRole("link", { name: "Graphing a line" }).click();
 			assert.ok(await page.locator("figure#chart svg").isVisible(), "the chart is not shown");

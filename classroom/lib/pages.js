@@ -1,5 +1,5 @@
 /**
- * The pages the classroom writes itself: the home page listing the books, a book's contents,
+ * The pages the classroom writes itself: the home page listing the books, a book's index page,
  * and the bar at the top of every book page that moves the student around the book.
  */
 
@@ -9,7 +9,7 @@
 const WORDS = {
 	en: {
 		books: "Books",
-		contents: "Contents",
+		index: "Index",
 		glossary: "Glossary",
 		reference: "Reference",
 		previous: "Previous",
@@ -20,7 +20,7 @@ const WORDS = {
 	},
 	es: {
 		books: "Libros",
-		contents: "Índice",
+		index: "Índice",
 		glossary: "Glosario",
 		reference: "Referencia",
 		previous: "Anterior",
@@ -37,7 +37,11 @@ function wordsFor(/** @type {string} */ language) {
 	return WORDS[base] ?? WORDS.en;
 }
 
-/** Escapes text for HTML. */
+/**
+ * Escapes text for HTML.
+ *
+ * @package
+ */
 export function escapeHtml(/** @type {string} */ text) {
 	return text
 		.replaceAll("&", "&amp;")
@@ -46,7 +50,11 @@ export function escapeHtml(/** @type {string} */ text) {
 		.replaceAll('"', "&quot;");
 }
 
-/** The address of a file of a book. */
+/**
+ * The address of a file of a book.
+ *
+ * @package
+ */
 export function bookUrl(/** @type {string} */ book, file = "") {
 	const path = file.split("/").map(encodeURIComponent).join("/");
 	return `/books/${encodeURIComponent(book)}/${path}`;
@@ -76,6 +84,7 @@ ${body}
  * The home page: every book the classroom serves.
  *
  * @param {{ name: string, title: string }[]} books
+ * @package
  */
 export function homePage(books) {
 	const items = books
@@ -93,13 +102,14 @@ ${items}
 }
 
 /**
- * A book's contents: its chapters and lessons in order, its glossary and its reference.
+ * A book's index page: its chapters and lessons in order, its glossary and its reference.
  *
  * @param {string} name The book's name
  * @param {BookIndex} index
- * @param {string[]} mismatches What the book checker found, shown above the contents
+ * @param {string[]} mismatches What the book checker found, shown above the chapters
+ * @package
  */
-export function contentsPage(name, index, mismatches) {
+export function indexPage(name, index, mismatches) {
 	const words = wordsFor(index.language);
 	const chapters = index.chapters
 		.map((chapter, c) => {
@@ -128,7 +138,7 @@ ${lessons}
 		language: index.language,
 		title: index.title,
 		body: `<header class="lesson">
-<div class="series">${words.contents}</div>
+<div class="series">${words.index}</div>
 <h1>${escapeHtml(index.title)}</h1>
 </header>
 ${mismatches.length > 0 ? mismatchNote(name, mismatches) : ""}
@@ -144,10 +154,11 @@ ${reference}
 }
 
 /**
- * The page shown in place of a book's contents when its index does not match its files.
+ * The page shown in place of a book's index page when its index cannot be read.
  *
  * @param {string} name
  * @param {string[]} mismatches
+ * @package
  */
 export function brokenBookPage(name, mismatches) {
 	return page({
@@ -171,20 +182,21 @@ ${items}
 }
 
 /**
- * The bar at the top of every page of a book: back to the contents, the lessons before and after
+ * The bar at the top of every page of a book: back to the index page, the lessons before and after
  * the one on screen, the glossary, the reference, and the switch between light and dark.
  *
  * @param {string} name The book's name
  * @param {BookIndex} index
  * @param {string} file The page on screen, from the book's folder
  * @returns {string} The bar's inner HTML
+ * @package
  */
 export function bookBar(name, index, file) {
 	const words = wordsFor(index.language);
 	const ready = index.chapters
 		.flatMap((chapter) => chapter.lessons)
 		.filter((lesson) => lesson.status === "ready");
-	const at = ready.findIndex((lesson) => lesson.file === file);
+	const position = ready.findIndex((lesson) => lesson.file === file);
 	const link = (
 		/** @type {Lesson | undefined} */ lesson,
 		/** @type {string} */ rel,
@@ -200,9 +212,9 @@ export function bookBar(name, index, file) {
 		)
 		.join("");
 	return [
-		`<a class="contents" href="${bookUrl(name)}">${escapeHtml(index.title)}</a>`,
-		at === -1 ? "" : link(ready[at - 1], "prev", `← ${words.previous}`),
-		at === -1 ? "" : link(ready[at + 1], "next", `${words.next} →`),
+		`<a class="index" href="${bookUrl(name)}">${escapeHtml(index.title)}</a>`,
+		position === -1 ? "" : link(ready[position - 1], "prev", `← ${words.previous}`),
+		position === -1 ? "" : link(ready[position + 1], "next", `${words.next} →`),
 		'<span class="spacer"></span>',
 		`<a class="glossary" href="${bookUrl(name, index.glossary)}">${words.glossary}</a>`,
 		reference,

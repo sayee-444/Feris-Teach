@@ -7,7 +7,7 @@
  * its glossary and its reference.
  */
 
-export { checkBook, readIndex } from "./lib/book.js";
+export { checkBook } from "./lib/book.js";
 export { startClassroom } from "./lib/server.js";
 
 /**

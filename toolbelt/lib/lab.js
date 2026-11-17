@@ -8,8 +8,8 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { scenariosDir, studentDir } from "./paths.js";
+import { pathToFileURL } from "node:url";
+import { ferisBin, scenariosDir, studentDir } from "./paths.js";
 
 /** @import { Browser } from "playwright" */
 /** @import { AutomaticScenario, HumanScenario, Scenario, Tools } from "../types.js" */
@@ -54,8 +54,7 @@ function toolsForRun() {
 	const tools = {
 		env,
 		feris(...args) {
-			const bin = fileURLToPath(new URL("../bin/feris.js", import.meta.url));
-			const result = spawnSync(process.execPath, [bin, ...args], {
+			const result = spawnSync(process.execPath, [ferisBin(), ...args], {
 				encoding: "utf8",
 				env: { ...process.env, ...env },
 			});
