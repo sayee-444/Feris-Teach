@@ -6,7 +6,9 @@
  */
 import assert from "node:assert/strict";
 
-/** @type {import("../../../toolbelt/lib/lab.js").AutomaticScenario} */
+/** @import { AutomaticScenario } from "#toolbelt" */
+
+/** @type {AutomaticScenario} */
 export default {
 	kind: "automatic",
 	title: "The toolbelt reports a version",

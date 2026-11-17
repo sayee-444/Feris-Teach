@@ -15,11 +15,13 @@ npm install
 | Command                                | What it does                                                      |
 | -------------------------------------- | ----------------------------------------------------------------- |
 | `npm run check`                        | Lint, formatting and type checks for the Node and the Python code |
-| `npm test`                             | The toolbelt's tests                                              |
+| `npm test`                             | The toolbelt's tests and the boundaries between parts             |
 | `npm run format`                       | Applies the formatting and the safe lint fixes                    |
 | `npm run feris -- lab run --automatic` | Runs every automatic scenario of the lab                          |
 
 The Node code is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler. The Python code is checked by Ruff and basedpyright. GitHub Actions runs `npm run check`, `npm test` and the lab's automatic scenarios on every pull request, on Linux and Windows.
+
+The code is split into parts, each with one entry file, and the checks fail when an import reaches inside another part ([ADR-0003](docs/adr/0003-one-folder-per-part-with-a-narrow-interface.md)). The conventions are in [docs/agents/javascript.md](docs/agents/javascript.md) and [docs/agents/python.md](docs/agents/python.md).
 
 `main` always passes the checks.
 

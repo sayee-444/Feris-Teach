@@ -8,6 +8,9 @@
   "engines": {
     "node": ">=22"
   },
+  "imports": {
+    "#toolbelt": "./toolbelt/index.js"
+  },
   "scripts": {
     "feris": "node toolbelt/bin/feris.js",
     "test": "node --test",

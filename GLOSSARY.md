@@ -96,6 +96,10 @@ _Avoid_: Barge-in, cancel
 
 ## Building Feris-Teach
 
+**Part**:
+A piece of Feris-Teach that can be built, tried, replaced or removed on its own: the toolbelt, the classroom, the voice service, the lab.
+_Avoid_: Module, package, component
+
 **Lab**:
 The place where one part of Feris-Teach is tried in isolation, by an agent or by a human, without giving a whole class.
 _Avoid_: Playground, sandbox, test bench
