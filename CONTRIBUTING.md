@@ -76,7 +76,7 @@ Every pull request that changes what a student or a contributor sees adds a line
 
 A release is:
 
-1. a commit that sets the version in `package.json` and `voice/pyproject.toml` and moves the `[Unreleased]` entries under the new version in the changelog,
+1. a commit that sets the version in `package.json` and `voice/pyproject.toml`, refreshes `voice/uv.lock` with `uv lock` run inside `voice/`, and moves the `[Unreleased]` entries under the new version in the changelog,
 2. a git tag `v<version>` on that commit,
 3. a GitHub Release for the tag, with the changelog entry as its notes.
 

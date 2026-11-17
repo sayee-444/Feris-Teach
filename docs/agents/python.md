@@ -28,7 +28,7 @@ The voice service is one **part** (ADR-0003). Its whole public interface is `voi
 - **Imports are absolute**: `from feris_voice._engine import Engine`. `TID252` fails a relative one.
 - **Name a module after what it holds** (`messages.py`, `_report.py`). A module named `types.py` shadows the standard library whenever something runs from inside its folder, so the name is never used.
 
-`voice/pyproject.toml` declares a `[build-system]`, so `uv sync` and `uv run` inside `voice/` install `feris_voice` into the environment.
+`voice/pyproject.toml` declares a `[build-system]`, so `uv sync` and `uv run` inside `voice/` install `feris_voice` into the environment. `voice/uv.lock` is committed: when `uv` changes it, commit the change with the work that caused it.
 
 ## Typing conventions
 
