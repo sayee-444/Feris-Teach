@@ -17,7 +17,7 @@
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkBook, readIndex } from "./book.js";
+import { checkBook, lessonAt, readIndex } from "./book.js";
 import {
 	bookBar,
 	bookUrl,
@@ -28,7 +28,7 @@ import {
 	shellPage,
 	THEME,
 } from "./pages.js";
-import { answerReport, classRecord, lessonAt, PATHS, viewReport } from "./state.js";
+import { answerReport, classRecord, PATHS, viewReport } from "./state.js";
 
 /** @import { IncomingMessage, ServerResponse } from "node:http" */
 /** @import { HtmlTagDescriptor, Plugin, ViteDevServer } from "vite" */
@@ -175,12 +175,21 @@ function classroom(booksDirs) {
 		return undefined;
 	};
 
-	const record = classRecord((page) => {
+	/**
+	 * The book a page of the classroom is in, with the book's index when it can be read.
+	 *
+	 * @param {string} page The decoded path of the page
+	 */
+	const bookOf = (page) => {
 		const target = bookPath(page);
 		const dir = target && findBooks(dirs).get(target.name);
-		if (!target || !dir) return { book: null, lesson: null };
-		const { index } = readIndex(dir);
-		return { book: target.name, lesson: index ? lessonAt(index, target.file ?? "") : null };
+		if (!target || !dir) return undefined;
+		return { name: target.name, file: target.file ?? "", index: readIndex(dir).index };
+	};
+	const record = classRecord((page) => {
+		const book = bookOf(page);
+		if (book === undefined) return { book: null, lesson: null };
+		return { book: book.name, lesson: book.index ? lessonAt(book.index, book.file) : null };
 	});
 
 	return {
@@ -246,10 +255,8 @@ function classroom(booksDirs) {
 	 * @param {string} page The decoded path of the page
 	 */
 	function bar(page) {
-		const target = bookPath(page);
-		const dir = target && findBooks(dirs).get(target.name);
-		const { index } = dir ? readIndex(dir) : { index: undefined };
-		return target && index ? bookBar(target.name, index, target.file ?? "") : libraryBar();
+		const book = bookOf(page);
+		return book?.index ? bookBar(book.name, book.index, book.file) : libraryBar();
 	}
 
 	/**
@@ -270,10 +277,12 @@ function classroom(booksDirs) {
 			const report = viewReport(body);
 			if (report === undefined) return sendStatus(res, 400);
 			record.see(report);
-		} else {
+		} else if (path === PATHS.answer) {
 			const report = answerReport(body);
 			if (report === undefined) return sendStatus(res, 400);
 			record.answer(report);
+		} else {
+			return notFound(res);
 		}
 		return sendStatus(res, 204);
 	}

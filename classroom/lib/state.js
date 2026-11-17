@@ -8,7 +8,7 @@
  * class, so a page that reloads, and even a shell that reloads, forgets nothing.
  */
 
-/** @import { Answer, BookIndex, ClassroomState, Selection, View } from "../types.js" */
+/** @import { Answer, ClassroomState, Selection, View } from "../types.js" */
 
 /**
  * What the shell reports about the page on screen.
@@ -40,7 +40,8 @@
  */
 
 /**
- * Where the classroom answers with its state, and where the shell sends its reports.
+ * Where the classroom answers with its state, and where the shell sends its reports. The
+ * shell's script, which has no imports, names the last two again in its `REPORT`.
  *
  * @package
  */
@@ -97,20 +98,6 @@ export function answerReport(body) {
 	if (!isText(page) || !(quiz === null || isText(quiz))) return undefined;
 	if (!isText(question) || !isText(answer) || typeof correct !== "boolean") return undefined;
 	return { page, quiz, question, answer, correct };
-}
-
-/**
- * The lesson a page of a book is, by the index's id, or nothing when the page is not a lesson.
- *
- * @param {BookIndex} index
- * @param {string} file The page, from the book's folder
- * @package
- */
-export function lessonAt(index, file) {
-	for (const chapter of index.chapters) {
-		for (const lesson of chapter.lessons) if (lesson.file === file) return lesson.id;
-	}
-	return null;
 }
 
 /**

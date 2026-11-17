@@ -19,7 +19,7 @@ const nav = /** @type {HTMLElement} */ (document.querySelector("header.classroom
 /** Where the theme is kept; the pages read the same key before they paint. */
 const THEME_KEY = "feris-theme";
 const HOME = "/books/";
-/** Where the shell reports the view and the selection, and the quiz answers. */
+/** Where the shell reports the view and the selection, and the quiz answers: `PATHS` in `lib/state.js`. */
 const REPORT = { view: "/shell/view", answer: "/shell/answer" };
 const SECTIONS = "section[id]";
 const PARAGRAPHS = "section[id] > [id]:not(section)";
@@ -113,8 +113,11 @@ function report() {
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let settling;
-/** Reports what is on screen once the student has stopped for a moment. */
-function soon() {
+/**
+ * Reports what is on screen a moment after the student acts: while they keep scrolling, at most
+ * once every `SETTLE`, and once more after they stop.
+ */
+function reportSoon() {
 	if (settling !== undefined) return;
 	settling = setTimeout(() => {
 		settling = undefined;
@@ -127,17 +130,17 @@ function watch() {
 	const win = frame.contentWindow;
 	const doc = frame.contentDocument;
 	if (!win || !doc) return;
-	const answeredOn = page();
-	win.addEventListener("scroll", soon, { passive: true });
-	win.addEventListener("resize", soon);
-	doc.addEventListener("selectionchange", soon);
+	const shown = page();
+	win.addEventListener("scroll", reportSoon, { passive: true });
+	win.addEventListener("resize", reportSoon);
+	doc.addEventListener("selectionchange", reportSoon);
 	// An image or a chart that arrives late moves what is in sight without a scroll.
 	// It is the frame's own observer, so that it goes away with the page.
 	const realm = /** @type {typeof globalThis} */ (/** @type {unknown} */ (win));
-	new realm.ResizeObserver(soon).observe(doc.documentElement);
+	new realm.ResizeObserver(reportSoon).observe(doc.documentElement);
 	doc.addEventListener("feris:answer", (event) => {
 		const { detail } = /** @type {CustomEvent} */ (event);
-		send(REPORT.answer, JSON.stringify({ page: answeredOn, ...detail }));
+		send(REPORT.answer, JSON.stringify({ page: shown, ...detail }));
 	});
 	report();
 }

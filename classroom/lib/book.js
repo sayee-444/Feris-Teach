@@ -126,6 +126,20 @@ function pagesOnDisk(/** @type {string} */ dir) {
 }
 
 /**
+ * The lesson a page of a book is, by the index's id, or nothing when the page is not a lesson.
+ *
+ * @param {BookIndex} index
+ * @param {string} file The page, from the book's folder
+ * @package
+ */
+export function lessonAt(index, file) {
+	for (const chapter of index.chapters) {
+		for (const lesson of chapter.lessons) if (lesson.file === file) return lesson.id;
+	}
+	return null;
+}
+
+/**
  * Reads a book's index without looking at its pages: fast enough for every request.
  *
  * @param {string} dir The book's folder
