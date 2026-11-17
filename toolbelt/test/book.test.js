@@ -124,6 +124,32 @@ test("two lessons with the same id are reported", (t) => {
 	assert.match(stderr, /index\.json: two lessons have the id "variables"/);
 });
 
+test("a lesson whose sections or paragraphs have no id, or share one, is reported", (t) => {
+	const { book, env } = copyOfSample(t);
+	const lesson = join(book, "lessons/01-variables.html");
+	writeFileSync(
+		lesson,
+		readFileSync(lesson, "utf8")
+			.replace('<p id="coefficient">', "<p>")
+			.replace('<div id="why-letters" class="note">', '<div id="variable" class="note">')
+			.replace('<section id="expressions">', "<section>"),
+	);
+
+	const { status, stderr } = feris(["book", "check", "algebra"], env);
+
+	assert.equal(status, 1);
+	assert.equal(
+		stderr,
+		[
+			"algebra does not match its index:",
+			'  - lessons/01-variables.html: a <p> in the section "the-idea" has no id',
+			"  - lessons/01-variables.html: a <section> has no id",
+			'  - lessons/01-variables.html: two elements have the id "variable"',
+			"",
+		].join("\n"),
+	);
+});
+
 test("a book can be checked by the path to its folder", (t) => {
 	const { book } = copyOfSample(t);
 

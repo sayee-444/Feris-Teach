@@ -10,7 +10,8 @@ The teacher's toolbelt: the single interface to everything outside the conversat
 
 Commands:
   book        Check the books ("feris book" lists its commands)
-  classroom   Start and stop the classroom ("feris classroom" lists its commands)
+  classroom   Start and stop the classroom, and read what the student sees ("feris classroom"
+              lists its commands)
   lab         Try one part of Feris-Teach in isolation ("feris lab" lists its commands)
 
 Options:

@@ -18,6 +18,10 @@
  *   </div>
  *
  * An empty <span class="score"></span> shows right answers out of those answered.
+ *
+ * Each answer is announced with a "feris:answer" event from the quiz, which bubbles up to the
+ * document. The shell listens for it and keeps the class's answers (ADR-0004): a quiz with an
+ * `id` is named by it there.
  */
 
 /** What the quiz says, in the languages it speaks; a page in another language gets English. */
@@ -52,6 +56,26 @@ const score = document.querySelector(".score");
 let right = 0;
 let answered = 0;
 
+/** The text of an element as a reader sees it, without the markup's line breaks. */
+function text(/** @type {Element | null} */ element) {
+	return (element?.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
+/** Tells whoever watches the page, the shell, that the student answered a quiz. */
+function announce(
+	/** @type {Element} */ quiz,
+	/** @type {string} */ answer,
+	/** @type {boolean} */ correct,
+) {
+	const detail = {
+		quiz: quiz.id || null,
+		question: text(quiz.querySelector(".question")),
+		answer,
+		correct,
+	};
+	quiz.dispatchEvent(new CustomEvent("feris:answer", { bubbles: true, detail }));
+}
+
 /** Counts one answer and shows the score. */
 function count(/** @type {boolean} */ ok) {
 	answered++;
@@ -73,6 +97,7 @@ for (const quiz of document.querySelectorAll(".quiz")) {
 			}
 			quiz.classList.add("answered");
 			count(ok);
+			announce(quiz, text(button), ok);
 		});
 	}
 }
@@ -101,6 +126,7 @@ for (const prediction of document.querySelectorAll(".prediction")) {
 		button.disabled = true;
 		prediction.classList.add("answered");
 		count(ok);
+		announce(prediction, input.value, ok);
 	};
 	button.addEventListener("click", check);
 	input.addEventListener("keydown", (event) => {

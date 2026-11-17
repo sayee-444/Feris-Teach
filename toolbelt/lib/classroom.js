@@ -1,10 +1,13 @@
 /**
- * `feris classroom`: starts and stops the classroom on localhost.
+ * `feris classroom`: starts and stops the classroom on localhost, and reads the classroom state.
  *
  * `start` runs `feris classroom serve` as a detached process and returns once it is listening,
  * so the classroom outlives the call that started it. The serving process records itself in
  * `<student>/run/classroom.json`, which `stop` reads to stop it; its output goes to
  * `<student>/run/classroom.log`.
+ *
+ * `state` asks the running classroom what the student has on screen and has answered, and
+ * prints it as JSON: one fast call for the teacher.
  */
 import { spawn } from "node:child_process";
 import {
@@ -17,7 +20,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { startClassroom } from "#classroom";
+import { classroomState, startClassroom } from "#classroom";
 import { booksDirs, ferisBin, studentBooksDir, studentDir } from "./paths.js";
 
 const USAGE = `Usage: feris classroom <command> [options]
@@ -27,6 +30,7 @@ The classroom: the local web page that shows the books.
 Commands:
   start   Start the classroom in the background and print its address
   stop    Stop the classroom, leaving no process behind
+  state   Print, as JSON, what the student has on screen and the quiz answers so far
   serve   Run the classroom in this terminal until Ctrl+C
 
 Options:
@@ -203,6 +207,18 @@ async function stop() {
 	return 0;
 }
 
+/** Prints the classroom state of the classroom that is running. */
+async function state() {
+	const open = running();
+	if (open === undefined) {
+		throw new ClassroomError(
+			'the classroom is not running. Start it with "feris classroom start".',
+		);
+	}
+	process.stdout.write(`${JSON.stringify(await classroomState(open.url), null, 2)}\n`);
+	return 0;
+}
+
 /**
  * Runs a `feris classroom` command.
  *
@@ -215,6 +231,7 @@ export async function classroom(args) {
 		if (command === "start") return await start(portOption(options));
 		if (command === "serve") return await serve(portOption(options));
 		if (command === "stop" && options.length === 0) return await stop();
+		if (command === "state" && options.length === 0) return await state();
 	} catch (error) {
 		if (!(error instanceof ClassroomError)) throw error;
 		console.error(`feris: ${error.message}`);
