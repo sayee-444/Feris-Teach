@@ -27,4 +27,5 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: npm run feris -- --version
+      # Run with node directly: PowerShell on the Windows runners can swallow the "--" of npm run.
+      - run: node toolbelt/bin/feris.js lab run --automatic
