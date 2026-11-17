@@ -10,5 +10,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["toolbelt", "lab", "test"]
+  "include": ["classroom", "toolbelt", "lab", "test"]
 }

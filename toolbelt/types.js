@@ -30,11 +30,16 @@
  */
 
 /**
- * What the lab hands to a scenario.
+ * What the lab hands to a scenario. Each run of a scenario gets tools of its own.
  *
  * @typedef {object} Tools
  * @property {(...args: string[]) => { status: number | null, stdout: string, stderr: string }} feris
  *   Runs the toolbelt the way the teacher does, as a separate process
+ * @property {Record<string, string>} env Environment variables added to every `feris` run of
+ *   this scenario, such as `FERIS_STUDENT_DIR` pointing at a temporary student folder. Empty at
+ *   the start; the scenario fills it.
+ * @property {() => Promise<import("playwright").Browser>} browser A headless Chromium, launched
+ *   on the first call and closed by the lab when the scenario is over
  */
 
 export {};

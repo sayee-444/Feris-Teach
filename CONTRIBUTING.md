@@ -8,7 +8,10 @@ You need [Node.js](https://nodejs.org/) 22 or later and [uv](https://docs.astral
 
 ```bash
 npm install
+npx playwright install chromium
 ```
+
+The second line downloads the headless Chromium that the classroom's lab scenarios look at pages with.
 
 ## Checks
 
@@ -39,9 +42,13 @@ A scenario is a folder in `lab/scenarios/` holding a `scenario.js`, and the fold
 - An **automatic** scenario checks itself: its `check` throws when the part under trial misbehaves, and the run exits accordingly.
 - A **human** scenario is for what only a person can judge. Its `present` shows what to judge; the lab then shows the scenario's checklist, asks for a rating from 1 to 5 and for comments, and appends them with a timestamp to `student/lab/<scenario>.jsonl`.
 
-To add a scenario, copy `lab/scenarios/example-automatic/` or `lab/scenarios/example-human/` and change it. The lab finds it by itself. Both `check` and `present` receive `feris`, which runs the toolbelt as a separate process, the way the teacher does.
+To add a scenario, copy `lab/scenarios/example-automatic/` or `lab/scenarios/example-human/` and change it. The lab finds it by itself. Both `check` and `present` receive the lab's tools, fresh for each run:
 
-Two environment variables point the lab elsewhere, which is how its own tests run it: `FERIS_SCENARIOS_DIR` replaces `lab/scenarios/`, and `FERIS_STUDENT_DIR` replaces `student/`.
+- `feris` runs the toolbelt as a separate process, the way the teacher does.
+- `env` holds environment variables added to every `feris` run of the scenario. A scenario that starts the classroom sets `FERIS_STUDENT_DIR` to a temporary folder, so it never meets the student's own classroom.
+- `browser()` launches a headless Chromium on the first call; the lab closes it when the scenario is over.
+
+Three environment variables point the toolbelt elsewhere, which is how the tests and the scenarios run it: `FERIS_SCENARIOS_DIR` replaces `lab/scenarios/`, `FERIS_STUDENT_DIR` replaces `student/`, and `FERIS_BOOKS_DIR` replaces `books/`.
 
 ## How work flows
 
@@ -82,4 +89,4 @@ A release is:
 
 ## Nothing personal in the repo
 
-Everything that belongs to a student lives in the git-ignored `student/` folder ([ADR-0002](docs/adr/0002-one-private-student-folder.md)). Never commit a profile, a student's book, a source or any third-party material. The only book the repo will ever hold is the sample book, written for this repo (planned).
+Everything that belongs to a student lives in the git-ignored `student/` folder ([ADR-0002](docs/adr/0002-one-private-student-folder.md)). Never commit a profile, a student's book, a source or any third-party material. The only book the repo will ever hold is the sample book, `books/basic-algebra/`, written for this repo. A book made from a student's own material, such as a textbook they own, lives in `student/books/`.

@@ -14,10 +14,12 @@ Work out which one the human wants before acting.
 ## Where things live
 
 - `toolbelt/`: the teacher's toolbelt, `feris`, the single interface to everything outside the conversation. Node, plain JavaScript with JSDoc types. Other parts import its entry, `toolbelt/index.js`, as `#toolbelt`. Run it with `npm run feris -- <command>`. Its tests in `toolbelt/test/` drive it as a separate process, the way the teacher does.
+- `classroom/`: the classroom, the local web page that shows the books. Served by Vite on localhost with live reload; other parts import its entry, `classroom/index.js`, as `#classroom`. `classroom/web/` holds what every page gets: the shared lesson components (stylesheet, quiz, token chips) and the classroom's bar. Start it with `npm run feris -- classroom start` and stop it with `npm run feris -- classroom stop`.
+- `books/`: the books that ship with the repo, today only the sample book, `basic-algebra`, written for this repo. A book is a folder with an `index.json` (chapters, lessons, titles, order, status; its shape is in `classroom/types.js`), plain HTML lessons, a glossary page and reference pages. `npm run feris -- book check <book>` reports every mismatch between the index and the files.
 - `lab/scenarios/`: the lab's scenarios, one self-contained folder each. `npm run feris -- lab list` lists them and `npm run feris -- lab run <scenario>` runs one. To add a scenario, copy `example-automatic/` or `example-human/`; the lab itself needs no change.
 - `voice/`: the voice service, a Python package managed with uv.
-- `assets/`: the shared lesson components (stylesheet, quiz, token chips) from before the classroom existed. Planned: they become the classroom's shared components. They are excluded from the lint until then.
-- `student/`: the student folder, git-ignored (ADR-0002). The profile, the student's books with their state, the ratings of the lab's human scenarios (`student/lab/`), and later the sources and the inbox. Nothing in it is ever committed.
+- `assets/`: the lesson components from before the classroom existed, in their original Spanish markup. The classroom's components in `classroom/web/` are their English port. `assets/` stays only for lessons written before the classroom, and is excluded from the lint.
+- `student/`: the student folder, git-ignored (ADR-0002). The profile, the student's books (`student/books/`, served next to the repo's), the ratings of the lab's human scenarios (`student/lab/`), the running classroom's record and log (`student/run/`), and later the sources and the inbox. Nothing in it is ever committed.
 - `test/`: the tests of the repo as a whole. `parts.test.js` holds the boundaries between parts.
 - `docs/agents/`: instructions for agents, covering the issue tracker, the triage labels, the domain docs, JavaScript and Python.
 - `docs/adr/`: the architecture decision records.
@@ -33,7 +35,7 @@ Feris-Teach is split into **parts**, one folder each at the root, and each part'
 
 ## Done means checked
 
-Run `npm run check` (lint, formatting and types for Node and Python), `npm test` and `npm run feris -- lab run --automatic` (every automatic scenario) before you call a change done. All must pass on Linux and Windows, so use `node:path` and `node:url` for paths, and keep shell-specific syntax out of the npm scripts.
+Run `npm run check` (lint, formatting and types for Node and Python), `npm test` and `npm run feris -- lab run --automatic` (every automatic scenario) before you call a change done. The classroom's scenarios run a headless Chromium: install it once with `npx playwright install chromium`. All must pass on Linux and Windows, so use `node:path` and `node:url` for paths, and keep shell-specific syntax out of the npm scripts.
 
 ## Personal instructions
 

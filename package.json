@@ -9,6 +9,7 @@
     "node": ">=22"
   },
   "imports": {
+    "#classroom": "./classroom/index.js",
     "#toolbelt": "./toolbelt/index.js"
   },
   "scripts": {
@@ -23,5 +24,9 @@
     "@biomejs/biome": "2.6.8",
     "@types/node": "26.6.6",
     "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "playwright": "1.64.1",
+    "vite": "8.3.5"
   }
 }

@@ -265,3 +265,47 @@ test("a human scenario that cannot show what to judge fails and says why", (t) =
 	assert.equal(stderr, 'feris: scenario "greeting" could not be presented: no voice\n');
 	assert.throws(() => ratings("greeting"), { code: "ENOENT" });
 });
+
+test("a scenario gives the toolbelt it runs an environment of its own", (t) => {
+	const { feris } = lab(t, {
+		"own-env": `import assert from "node:assert/strict";
+export default {
+	kind: "automatic",
+	title: "The toolbelt sees the scenario's environment",
+	check({ feris, env }) {
+		env.FERIS_SCENARIOS_DIR = "a folder that does not exist";
+		const { stdout } = feris("lab", "list");
+		assert.equal(stdout, "", "the toolbelt still lists the lab's scenarios");
+	},
+};
+`,
+	});
+
+	const { status, stdout, stderr } = feris(["lab", "run", "own-env"]);
+
+	assert.equal(stderr, "");
+	assert.equal(status, 0);
+	assert.equal(stdout, "PASS own-env: The toolbelt sees the scenario's environment\n");
+});
+
+test("a scenario can look at a page in a headless browser", (t) => {
+	const { feris } = lab(t, {
+		looks: `import assert from "node:assert/strict";
+export default {
+	kind: "automatic",
+	title: "A page shows its heading",
+	async check({ browser }) {
+		const page = await (await browser()).newPage();
+		await page.setContent("<h1>Hello</h1>");
+		assert.equal(await page.textContent("h1"), "Hello");
+	},
+};
+`,
+	});
+
+	const { status, stdout, stderr } = feris(["lab", "run", "looks"]);
+
+	assert.equal(stderr, "");
+	assert.equal(status, 0);
+	assert.equal(stdout, "PASS looks: A page shows its heading\n");
+});

@@ -1,0 +1,419 @@
+/*
+ * The lessons' shared stylesheet. The classroom adds it to every page of a book, before the
+ * page's own styles, so a page needs no link to it.
+ *
+ * Light and dark follow the system unless the student picks one: the classroom then sets
+ * data-theme="light" or data-theme="dark" on <html>.
+ */
+
+:root {
+	--bg: #fffff8;
+	--fg: #1f1d1a;
+	--muted: #6b665e;
+	--line: #e4e0d4;
+	--accent: #a33b20;
+	--accent-soft: #f6e7e1;
+	--code-bg: #f3f1e8;
+	--ok: #2f6b3a;
+	--ok-soft: #e3f0e4;
+	--bad: #9b2c2c;
+	--bad-soft: #f7e2e2;
+	--chip-1: #e8eef7;
+	--chip-2: #f7efe0;
+	--chip-3: #e9f3ea;
+	--chip-4: #f3e6f0;
+	--chip-special: #fde6c8;
+	--serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+	--mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #1b1a17;
+		--fg: #e9e5da;
+		--muted: #a39d90;
+		--line: #3a3731;
+		--accent: #e8825f;
+		--accent-soft: #3a2a22;
+		--code-bg: #26241f;
+		--ok: #8fd19e;
+		--ok-soft: #1f3324;
+		--bad: #f19a9a;
+		--bad-soft: #3a2222;
+		--chip-1: #24303f;
+		--chip-2: #3a3222;
+		--chip-3: #233424;
+		--chip-4: #352434;
+		--chip-special: #4a3518;
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme="dark"] {
+	--bg: #1b1a17;
+	--fg: #e9e5da;
+	--muted: #a39d90;
+	--line: #3a3731;
+	--accent: #e8825f;
+	--accent-soft: #3a2a22;
+	--code-bg: #26241f;
+	--ok: #8fd19e;
+	--ok-soft: #1f3324;
+	--bad: #f19a9a;
+	--bad-soft: #3a2222;
+	--chip-1: #24303f;
+	--chip-2: #3a3222;
+	--chip-3: #233424;
+	--chip-4: #352434;
+	--chip-special: #4a3518;
+	color-scheme: dark;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--serif);
+	font-size: 1.125rem;
+	line-height: 1.6;
+}
+
+main {
+	max-width: 44rem;
+	margin: 0 auto;
+	padding: 2.5rem 1rem 5rem;
+}
+
+header.lesson {
+	border-bottom: 1px solid var(--line);
+	margin-bottom: 2rem;
+	padding-bottom: 1rem;
+}
+header.lesson .series {
+	color: var(--muted);
+	font-size: 0.9rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+h1 {
+	font-weight: 400;
+	font-size: 2.2rem;
+	line-height: 1.15;
+	margin: 0.3rem 0 0.6rem;
+}
+h2 {
+	font-weight: 400;
+	font-size: 1.5rem;
+	margin: 2.8rem 0 0.6rem;
+}
+h2 .step {
+	color: var(--accent);
+	font-style: italic;
+	margin-right: 0.4rem;
+}
+h3 {
+	font-weight: 600;
+	font-size: 1.05rem;
+	margin: 1.6rem 0 0.4rem;
+}
+p.sub {
+	color: var(--muted);
+	font-style: italic;
+	margin: 0;
+}
+
+a {
+	color: var(--accent);
+}
+a:hover {
+	text-decoration-thickness: 2px;
+}
+
+code,
+pre {
+	font-family: var(--mono);
+	font-size: 0.86em;
+}
+code {
+	background: var(--code-bg);
+	padding: 0.08em 0.3em;
+	border-radius: 3px;
+}
+pre {
+	background: var(--code-bg);
+	padding: 0.9rem 1rem;
+	border-radius: 6px;
+	overflow-x: auto;
+	line-height: 1.45;
+	border-left: 3px solid var(--line);
+}
+pre code {
+	background: none;
+	padding: 0;
+}
+pre .comment {
+	color: var(--muted);
+}
+pre .keyword {
+	color: var(--accent);
+}
+
+.note {
+	border-left: 3px solid var(--accent);
+	background: var(--accent-soft);
+	padding: 0.7rem 1rem;
+	border-radius: 0 6px 6px 0;
+	margin: 1.2rem 0;
+}
+.note strong:first-child {
+	color: var(--accent);
+}
+
+.cite {
+	font-size: 0.82rem;
+	vertical-align: super;
+	line-height: 0;
+}
+
+figure {
+	margin: 1.6rem 0;
+}
+figure svg {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+figcaption {
+	color: var(--muted);
+	font-size: 0.9rem;
+	font-style: italic;
+	margin-top: 0.4rem;
+}
+
+table {
+	border-collapse: collapse;
+	width: 100%;
+	font-size: 0.95rem;
+	margin: 1rem 0;
+}
+th,
+td {
+	text-align: left;
+	padding: 0.4rem 0.5rem;
+	border-bottom: 1px solid var(--line);
+	vertical-align: top;
+}
+th {
+	font-weight: 600;
+}
+
+/* A box naming the trusted work a lesson draws on. */
+.cited-work {
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 0.9rem 1.1rem;
+	margin: 2rem 0;
+}
+.cited-work .label {
+	color: var(--muted);
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.ask-the-teacher {
+	margin-top: 3rem;
+	padding: 1rem 1.2rem;
+	background: var(--code-bg);
+	border-radius: 8px;
+	font-style: italic;
+}
+
+ol.steps > li {
+	margin-bottom: 0.8rem;
+}
+
+/* A glossary: <dl class="glossary"> with an id on each <dt>. */
+dl.glossary dt {
+	font-weight: 600;
+	margin-top: 1.2rem;
+}
+dl.glossary dd {
+	margin: 0.2rem 0 0;
+}
+
+@media print {
+	body {
+		background: #fff;
+		color: #000;
+		font-size: 11pt;
+	}
+	main {
+		max-width: none;
+		padding: 0;
+	}
+	a {
+		color: #000;
+	}
+	pre {
+		white-space: pre-wrap;
+		border: 1px solid #ccc;
+	}
+	.quiz button,
+	.no-print {
+		display: none;
+	}
+}
+
+/* ---------- Token chips (token-chips.js) ---------- */
+.tokens {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	margin: 0.8rem 0 1.2rem;
+	font-family: var(--mono);
+	font-size: 0.85rem;
+}
+.chip {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	border-radius: 5px;
+	padding: 0.15rem 0.45rem 0.2rem;
+	border: 1px solid var(--line);
+	min-width: 2.2rem;
+}
+.chip .piece {
+	white-space: pre;
+	font-weight: 600;
+}
+.chip .id {
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+.chip.c0 {
+	background: var(--chip-1);
+}
+.chip.c1 {
+	background: var(--chip-2);
+}
+.chip.c2 {
+	background: var(--chip-3);
+}
+.chip.c3 {
+	background: var(--chip-4);
+}
+.chip.special {
+	background: var(--chip-special);
+	border-color: var(--accent);
+}
+.chip.bytes .piece {
+	font-weight: 400;
+	color: var(--muted);
+}
+.tokens .total {
+	align-self: center;
+	color: var(--muted);
+	font-size: 0.8rem;
+	margin-left: 0.4rem;
+}
+
+/* ---------- Quiz and prediction (quiz.js) ---------- */
+.quiz {
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 1rem 1.1rem;
+	margin: 1.2rem 0;
+}
+.quiz .question {
+	margin: 0 0 0.7rem;
+	font-weight: 600;
+}
+.quiz .options {
+	display: grid;
+	gap: 0.4rem;
+}
+.quiz button,
+.prediction button {
+	font: inherit;
+	font-size: 0.95rem;
+	text-align: left;
+	cursor: pointer;
+	background: var(--bg);
+	color: var(--fg);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	padding: 0.45rem 0.7rem;
+}
+.quiz button:hover:not(:disabled) {
+	border-color: var(--accent);
+}
+.quiz button.correct {
+	background: var(--ok-soft);
+	border-color: var(--ok);
+}
+.quiz button.incorrect {
+	background: var(--bad-soft);
+	border-color: var(--bad);
+}
+.quiz button:disabled {
+	cursor: default;
+}
+.quiz .explanation,
+.prediction .explanation {
+	display: none;
+	margin: 0.7rem 0 0;
+	font-size: 0.95rem;
+	color: var(--muted);
+}
+.quiz.answered .explanation,
+.prediction.answered .explanation {
+	display: block;
+}
+.prediction {
+	border: 1px dashed var(--line);
+	border-radius: 8px;
+	padding: 0.9rem 1.1rem;
+	margin: 1rem 0;
+}
+.prediction .question {
+	margin: 0 0 0.6rem;
+}
+.prediction input {
+	font: inherit;
+	width: 5rem;
+	padding: 0.3rem 0.5rem;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: var(--bg);
+	color: var(--fg);
+}
+.prediction .verdict {
+	margin-left: 0.6rem;
+	font-weight: 600;
+}
+.prediction .verdict.right {
+	color: var(--ok);
+}
+.prediction .verdict.wrong {
+	color: var(--bad);
+}
+.score {
+	position: sticky;
+	bottom: 0.8rem;
+	float: right;
+	background: var(--code-bg);
+	border: 1px solid var(--line);
+	border-radius: 20px;
+	padding: 0.2rem 0.8rem;
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+.score:empty {
+	display: none;
+}
