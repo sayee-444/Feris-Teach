@@ -11,6 +11,10 @@
  * change, and each quiz answer as the page announces it. Sections and paragraphs are named by
  * their `id`: a section is a `<section>` with one, and a paragraph any element with one right
  * inside such a section.
+ *
+ * And it carries out the teacher's orders, which the classroom's server passes on as they come:
+ * opening a page in the frame, and pointing at an element of the page on screen, which
+ * highlights it and scrolls it into view. It tells the server each order is done, or why not.
  */
 
 const root = document.documentElement;
@@ -27,6 +31,10 @@ const PARAGRAPHS = "section[id] > [id]:not(section)";
 const SETTLE = 100;
 /** The most of a selection reported: the teacher needs to know which text, not all of it. */
 const SELECTION_LIMIT = 2000;
+/** Where the shell listens for the teacher's orders and says they are done: `ORDER_PATHS` in `lib/orders.js`. */
+const ORDERS = { listen: "/shell/orders", done: "/shell/done" };
+/** The attribute that marks what the teacher points at; `classroom.css` draws it. */
+const POINTED = "data-feris-pointed";
 
 /** The page the shell's address points at. */
 function wanted() {
@@ -145,10 +153,64 @@ function watch() {
 	report();
 }
 
+/** Tells the server an order is done, or why it is not. */
+function done(/** @type {number} */ order, /** @type {string | null} */ reason) {
+	send(ORDERS.done, JSON.stringify({ order, reason }));
+}
+
+/** The order to open a page that waits for the page to load, if any. */
+let opening = /** @type {{ order: number, page: string } | undefined} */ (undefined);
+
+/** Opens a page in the frame; the order is done once it has loaded. */
+function open(/** @type {number} */ order, /** @type {string} */ target) {
+	if (page() === target) return done(order, null);
+	opening = { order, page: target };
+	frame.contentWindow?.location.assign(target);
+}
+
+/**
+ * Highlights the element with this id on the page on screen and scrolls it into view, in place of
+ * whatever was pointed at before. With no id, only clears the pointing.
+ */
+function point(/** @type {number} */ order, /** @type {string | null} */ id) {
+	const win = frame.contentWindow;
+	const doc = frame.contentDocument;
+	const element = id === null ? null : doc?.getElementById(id);
+	if (id !== null && !element) {
+		return done(order, `there is no element "${id}" on the page on screen, ${page()}.`);
+	}
+	for (const before of doc?.querySelectorAll(`[${POINTED}]`) ?? []) {
+		before.removeAttribute(POINTED);
+	}
+	if (win && element) {
+		// Read between the two, so that pointing at the same element again draws it anew.
+		void (/** @type {HTMLElement} */ (element).offsetWidth);
+		element.setAttribute(POINTED, "");
+		const still = win.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		const tall = element.getBoundingClientRect().height > win.innerHeight * 0.8;
+		element.scrollIntoView({
+			behavior: still ? "auto" : "smooth",
+			block: tall ? "start" : "center",
+		});
+	}
+	done(order, null);
+}
+
+new EventSource(ORDERS.listen).addEventListener("message", (event) => {
+	const order = JSON.parse(event.data);
+	if (order.kind === "open") open(order.order, order.page);
+	else if (order.kind === "point") point(order.order, order.id);
+	else done(order.order, `the classroom does not know the order "${order.kind}".`);
+});
+
 let loads = 0;
 frame.addEventListener("load", async () => {
 	const load = ++loads;
 	history.replaceState(null, "", `#${encodeURI(showing())}`);
+	if (opening && page() === opening.page) {
+		done(opening.order, null);
+		opening = undefined;
+	}
 	document.title = frame.contentDocument?.title || "Classroom";
 	shareTheme();
 	watch();

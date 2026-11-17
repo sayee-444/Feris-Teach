@@ -5,9 +5,11 @@
  * The classroom is the local web page where the visual part of the class happens. It serves the
  * books on localhost with live reload, and it knows the shape of a book: its index, its lessons,
  * its glossary and its reference, and it tells what the student has on screen and has answered.
+ * The teacher opens its pages and points at what is on them.
  */
 
 export { checkBook } from "./lib/book.js";
+export { ClassroomRefusal, openPage, pointAt } from "./lib/orders.js";
 export { startClassroom } from "./lib/server.js";
 export { classroomState } from "./lib/state.js";
 

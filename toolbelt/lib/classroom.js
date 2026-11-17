@@ -20,7 +20,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { classroomState, startClassroom } from "#classroom";
+import { ClassroomRefusal, classroomState, openPage, pointAt, startClassroom } from "#classroom";
 import { booksDirs, ferisBin, studentBooksDir, studentDir } from "./paths.js";
 
 const USAGE = `Usage: feris classroom <command> [options]
@@ -28,10 +28,15 @@ const USAGE = `Usage: feris classroom <command> [options]
 The classroom: the local web page that shows the books.
 
 Commands:
-  start   Start the classroom in the background and print its address
-  stop    Stop the classroom, leaving no process behind
-  state   Print, as JSON, what the student has on screen and the quiz answers so far
-  serve   Run the classroom in this terminal until Ctrl+C
+  start          Start the classroom in the background and print its address
+  stop           Stop the classroom, leaving no process behind
+  state          Print, as JSON, what the student has on screen and the quiz answers so far
+  open <page>    Open a page on the student's screen, named as "state" names it
+                 (/books/<book>/<file>); the leading / may be left out
+  point <id>     Highlight the element with this id on the page on screen and scroll to it,
+                 in place of what was pointed at before
+  point --clear  Stop pointing
+  serve          Run the classroom in this terminal until Ctrl+C
 
 Options:
   --port <port>   Serve on this port instead of any free one (start and serve)
@@ -207,15 +212,39 @@ async function stop() {
 	return 0;
 }
 
-/** Prints the classroom state of the classroom that is running. */
-async function state() {
+/** The classroom that is running; when none is, the teacher is told to start it. */
+function runningClassroom() {
 	const open = running();
 	if (open === undefined) {
 		throw new ClassroomError(
 			'the classroom is not running. Start it with "feris classroom start".',
 		);
 	}
-	process.stdout.write(`${JSON.stringify(await classroomState(open.url), null, 2)}\n`);
+	return open;
+}
+
+/** Prints the classroom state of the classroom that is running. */
+async function state() {
+	const { url } = runningClassroom();
+	process.stdout.write(`${JSON.stringify(await classroomState(url), null, 2)}\n`);
+	return 0;
+}
+
+/**
+ * Opens a page of the classroom on the student's screen. The page is named as the classroom
+ * state names it; its leading `/` may be left out, which Git Bash on Windows would otherwise
+ * turn into a folder of its own.
+ */
+async function open(/** @type {string} */ page) {
+	const { url } = runningClassroom();
+	await openPage(url, page.startsWith("/") ? page : `/${page}`);
+	return 0;
+}
+
+/** Points at an element of the page on the student's screen, or clears the pointing. */
+async function point(/** @type {string | null} */ id) {
+	const { url } = runningClassroom();
+	await pointAt(url, id);
 	return 0;
 }
 
@@ -232,8 +261,12 @@ export async function classroom(args) {
 		if (command === "serve") return await serve(portOption(options));
 		if (command === "stop" && options.length === 0) return await stop();
 		if (command === "state" && options.length === 0) return await state();
+		if (command === "open" && options.length === 1) return await open(String(options[0]));
+		if (command === "point" && options.length === 1) {
+			return await point(options[0] === "--clear" ? null : String(options[0]));
+		}
 	} catch (error) {
-		if (!(error instanceof ClassroomError)) throw error;
+		if (!(error instanceof ClassroomError || error instanceof ClassroomRefusal)) throw error;
 		console.error(`feris: ${error.message}`);
 		return 1;
 	}
