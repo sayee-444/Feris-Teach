@@ -14,16 +14,17 @@ Work out which one the human wants before acting.
 ## Where things live
 
 - `toolbelt/`: the teacher's toolbelt, `feris`, the single interface to everything outside the conversation. Node, plain JavaScript with JSDoc types. Run it with `npm run feris -- <command>`. Its tests in `toolbelt/test/` drive it as a separate process, the way the teacher does.
+- `lab/scenarios/`: the lab's scenarios, one self-contained folder each. `npm run feris -- lab list` lists them and `npm run feris -- lab run <scenario>` runs one. To add a scenario, copy `example-automatic/` or `example-human/`; the lab itself needs no change.
 - `voice/`: the voice service, a Python package managed with uv. Read `docs/agents/python.md` before writing, running or reviewing Python.
 - `assets/`: the shared lesson components (stylesheet, quiz, token chips) from before the classroom existed. Planned: they become the classroom's shared components. They are excluded from the lint until then.
-- `student/`: the student folder, git-ignored (ADR-0002). The profile, the student's books with their state, and later the sources and the inbox. Nothing in it is ever committed.
+- `student/`: the student folder, git-ignored (ADR-0002). The profile, the student's books with their state, the ratings of the lab's human scenarios (`student/lab/`), and later the sources and the inbox. Nothing in it is ever committed.
 - `docs/agents/`: instructions for agents, covering the issue tracker, the triage labels, the domain docs and Python.
 - `docs/adr/`: the architecture decision records.
 - `.github/workflows/`: the checks that run on every pull request.
 
 ## Done means checked
 
-Run `npm run check` (lint, formatting and types for Node and Python) and `npm test` before you call a change done. Both must pass on Linux and Windows, so use `node:path` and `node:url` for paths, and keep shell-specific syntax out of the npm scripts.
+Run `npm run check` (lint, formatting and types for Node and Python), `npm test` and `npm run feris -- lab run --automatic` (every automatic scenario) before you call a change done. Both must pass on Linux and Windows, so use `node:path` and `node:url` for paths, and keep shell-specific syntax out of the npm scripts.
 
 ## Personal instructions
 

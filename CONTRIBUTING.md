@@ -12,15 +12,32 @@ npm install
 
 ## Checks
 
-| Command          | What it does                                                      |
-| ---------------- | ----------------------------------------------------------------- |
-| `npm run check`  | Lint, formatting and type checks for the Node and the Python code |
-| `npm test`       | The toolbelt's tests                                              |
-| `npm run format` | Applies the formatting and the safe lint fixes                    |
+| Command                                | What it does                                                      |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| `npm run check`                        | Lint, formatting and type checks for the Node and the Python code |
+| `npm test`                             | The toolbelt's tests                                              |
+| `npm run format`                       | Applies the formatting and the safe lint fixes                    |
+| `npm run feris -- lab run --automatic` | Runs every automatic scenario of the lab                          |
 
-The Node code is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler. The Python code is checked by Ruff and basedpyright. GitHub Actions runs `npm run check` and `npm test` on every pull request, on Linux and Windows.
+The Node code is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler. The Python code is checked by Ruff and basedpyright. GitHub Actions runs `npm run check`, `npm test` and the lab's automatic scenarios on every pull request, on Linux and Windows.
 
 `main` always passes the checks.
+
+## The lab
+
+The lab tries one part of Feris-Teach in isolation, without giving a class, by loading a scenario:
+
+```bash
+npm run feris -- lab list
+npm run feris -- lab run example-automatic
+```
+
+A scenario is a folder in `lab/scenarios/` holding a `scenario.js`, and the folder's name is the scenario's name. There are two kinds:
+
+- An **automatic** scenario checks itself: its `check` throws when the part under trial misbehaves, and the run exits accordingly.
+- A **human** scenario is for what only a person can judge. Its `present` shows what to judge; the lab then shows the scenario's checklist, asks for a rating from 1 to 5 and for comments, and appends them with a timestamp to `student/lab/<scenario>.jsonl`.
+
+To add a scenario, copy `lab/scenarios/example-automatic/` or `lab/scenarios/example-human/` and change it. The lab finds it by itself. Both `check` and `present` receive `feris`, which runs the toolbelt as a separate process, the way the teacher does.
 
 ## How work flows
 
