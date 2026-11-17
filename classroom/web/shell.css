@@ -1,0 +1,60 @@
+/* The shell (ADR-0004): the bar on top and the frame that shows the book below it. */
+
+html,
+body.shell {
+	height: 100%;
+}
+
+body.shell {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+body.shell > iframe {
+	flex: 1;
+	width: 100%;
+	border: 0;
+	background: var(--bg);
+}
+
+header.classroom-bar {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.5rem 1rem;
+	background: var(--bg);
+	border-bottom: 1px solid var(--line);
+	font-size: 0.9rem;
+}
+header.classroom-bar nav {
+	flex: 1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.3rem 1rem;
+}
+header.classroom-bar a {
+	text-decoration: none;
+}
+header.classroom-bar a:hover {
+	text-decoration: underline;
+}
+header.classroom-bar .library {
+	color: var(--muted);
+}
+header.classroom-bar .index {
+	font-weight: 600;
+}
+header.classroom-bar .spacer {
+	flex: 1;
+}
+header.classroom-bar .theme {
+	font: inherit;
+	cursor: pointer;
+	background: none;
+	color: var(--fg);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	padding: 0.1rem 0.5rem;
+}

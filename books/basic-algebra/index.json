@@ -1,0 +1,53 @@
+{
+  "title": "Basic algebra",
+  "language": "en",
+  "chapters": [
+    {
+      "title": "Expressions",
+      "lessons": [
+        {
+          "id": "variables",
+          "title": "Variables and expressions",
+          "file": "lessons/01-variables.html",
+          "status": "ready"
+        },
+        {
+          "id": "like-terms",
+          "title": "Combining like terms",
+          "file": "lessons/02-like-terms.html",
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "title": "Linear equations",
+      "lessons": [
+        {
+          "id": "solving",
+          "title": "Solving a linear equation",
+          "file": "lessons/03-solving.html",
+          "status": "ready"
+        },
+        {
+          "id": "graphing",
+          "title": "Graphing a line",
+          "file": "lessons/04-graphing.html",
+          "status": "ready"
+        },
+        {
+          "id": "systems",
+          "title": "Systems of two equations",
+          "file": "lessons/05-systems.html",
+          "status": "planned"
+        }
+      ]
+    }
+  ],
+  "glossary": "glossary.html",
+  "reference": [
+    {
+      "title": "Rules at a glance",
+      "file": "reference/rules.html"
+    }
+  ]
+}

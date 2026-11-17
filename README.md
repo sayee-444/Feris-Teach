@@ -2,7 +2,7 @@
 
 A teaching agent for [Claude Code](https://claude.com/claude-code). The **teacher**, speaking as the persona **Feris**, teaches any subject by talking with you in short turns, in text or voice, while a local web **classroom** shows the **book** you are studying. The teacher knows what is on your screen and can point at it.
 
-> **Status: under construction.** The first release, `0.1.0` ("a talking class with Feris"), is being built ticket by ticket. What exists today is the project base: the teacher's toolbelt skeleton and the checks. Starting a class does not work yet. The plan is in the [spec](https://github.com/sayee-444/Feris-Teach/issues/1), and progress is in the [changelog](CHANGELOG.md).
+> **Status: under construction.** The first release, `0.1.0` ("a talking class with Feris"), is being built ticket by ticket. What exists today is the teacher's toolbelt, the lab and the classroom serving a sample book. Starting a class does not work yet. The plan is in the [spec](https://github.com/sayee-444/Feris-Teach/issues/1), and progress is in the [changelog](CHANGELOG.md).
 
 ## What a class will be
 
@@ -26,8 +26,10 @@ Teacher, persona, classroom, book and the other words of the product are defined
 git clone https://github.com/sayee-444/Feris-Teach.git
 cd Feris-Teach
 npm install
-npm run feris -- --version
+npm run feris -- classroom start
 ```
+
+The last command prints the classroom's address. Open it in a browser to read the sample book on basic algebra; `npm run feris -- classroom stop` stops it.
 
 `feris` is the teacher's toolbelt: one command-line tool for everything outside the conversation. `npm run feris -- --help` lists what it can do.
 

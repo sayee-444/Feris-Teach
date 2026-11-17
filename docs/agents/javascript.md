@@ -1,12 +1,14 @@
 # JavaScript
 
-The Node code of Feris-Teach is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler (`npm run check:node`). It is split into **parts** (ADR-0003). Today the only part with code of its own is the toolbelt, in `toolbelt/`, which also runs the lab; the lab's scenarios in `lab/scenarios/` are a self-registering set, found at run time.
+The Node code of Feris-Teach is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler (`npm run check:node`). It is split into **parts** (ADR-0003). Today two parts have code of their own: the toolbelt, in `toolbelt/`, which also runs the lab, and the classroom, in `classroom/`. The lab's scenarios in `lab/scenarios/` are a self-registering set, found at run time.
+
+The classroom's `web/` folder holds scripts that run in the student's browser, not in Node. They are ES modules with no imports, checked by the same tools. `shell.js` runs in the shell, the one page that never reloads (ADR-0004); the others run in every page of a book, inside the shell's frame.
 
 ## One entry file per part
 
 A part's whole public interface is its `index.js`. Read it to learn the part; everything else in the folder is the part's inside, free to change.
 
-- **Between parts, import the entry by its `#name`**: `#toolbelt`, declared under `imports` in the root `package.json`. Inside a part, import by relative path.
+- **Between parts, import the entry by its `#name`**: `#toolbelt` or `#classroom`, declared under `imports` in the root `package.json`. Inside a part, import by relative path.
 - **The entry lists what it shares by name**: `export { name } from "./lib/file.js"`, one line per export, so the interface reads at a glance.
 - **Mark an export `@package`** in its JSDoc when only its own folder and subfolders may import it, and `@private` when no other file may.
 

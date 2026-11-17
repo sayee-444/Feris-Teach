@@ -8,8 +8,10 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
+import { ferisBin, scenariosDir, studentDir } from "./paths.js";
 
+/** @import { Browser } from "playwright" */
 /** @import { AutomaticScenario, HumanScenario, Scenario, Tools } from "../types.js" */
 
 const USAGE = `Usage: feris lab <command>
@@ -25,26 +27,49 @@ Commands:
 /** A problem to report to whoever ran the lab, as opposed to a bug in the lab. */
 class LabError extends Error {}
 
-/** @type {Tools} */
-const tools = {
-	feris(...args) {
-		const bin = fileURLToPath(new URL("../bin/feris.js", import.meta.url));
-		const result = spawnSync(process.execPath, [bin, ...args], { encoding: "utf8" });
-		return { status: result.status, stdout: result.stdout, stderr: result.stderr };
-	},
-};
-
-/** Where the scenarios live. */
-function scenariosDir() {
-	return (
-		process.env.FERIS_SCENARIOS_DIR ??
-		fileURLToPath(new URL("../../lab/scenarios", import.meta.url))
-	);
+/** Launches a headless Chromium, saying how to install one when there is none. */
+async function launchBrowser() {
+	const { chromium } = await import("playwright");
+	try {
+		return await chromium.launch();
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		if (!reason.includes("Executable doesn't exist")) throw error;
+		throw new Error(
+			'there is no headless browser to run this scenario. Install one with "npx playwright install chromium".',
+		);
+	}
 }
 
-/** The student folder (ADR-0002), where the human's ratings are saved. */
-function studentDir() {
-	return process.env.FERIS_STUDENT_DIR ?? fileURLToPath(new URL("../../student", import.meta.url));
+/**
+ * The tools for one run of a scenario, each run with its own, and a way to put them away when
+ * the run is over.
+ */
+function toolsForRun() {
+	/** @type {Record<string, string>} */
+	const env = {};
+	/** @type {Promise<Browser> | undefined} */
+	let browser;
+	/** @type {Tools} */
+	const tools = {
+		env,
+		feris(...args) {
+			const result = spawnSync(process.execPath, [ferisBin(), ...args], {
+				encoding: "utf8",
+				env: { ...process.env, ...env },
+			});
+			return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+		},
+		browser() {
+			browser ??= launchBrowser();
+			return browser;
+		},
+	};
+	const close = async () => {
+		const launched = await browser?.catch(() => undefined);
+		await launched?.close();
+	};
+	return { tools, close };
 }
 
 /** The names of the scenarios in the lab, in alphabetical order. */
@@ -132,12 +157,15 @@ function indent(/** @type {string} */ text) {
  * @returns {Promise<boolean>}
  */
 async function runAutomatic(name, scenario) {
+	const { tools, close } = toolsForRun();
 	try {
 		await scenario.check(tools);
 	} catch (error) {
 		const reason = error instanceof Error ? error.message : String(error);
 		console.error(`FAIL ${name}: ${scenario.title}\n${indent(reason)}`);
 		return false;
+	} finally {
+		await close();
 	}
 	console.log(`PASS ${name}: ${scenario.title}`);
 	return true;
@@ -151,9 +179,11 @@ async function runAutomatic(name, scenario) {
  */
 async function runHuman(name, scenario) {
 	console.log(`${name}: ${scenario.title}\n`);
+	const { tools, close } = toolsForRun();
 	try {
 		await scenario.present(tools);
 	} catch (error) {
+		await close();
 		const reason = error instanceof Error ? error.message : String(error);
 		throw new LabError(`scenario "${name}" could not be presented: ${reason}`);
 	}
@@ -190,6 +220,7 @@ async function runHuman(name, scenario) {
 		console.log(`Saved to ${file}`);
 	} finally {
 		answers.close();
+		await close();
 	}
 }
 

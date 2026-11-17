@@ -1,0 +1,26 @@
+/* The look of the pages the classroom writes itself: the list of books and a book's index page. */
+
+.chapter ul.lessons {
+	list-style: none;
+	padding-left: 0;
+}
+.chapter .number {
+	display: inline-block;
+	min-width: 2.6rem;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+.chapter li {
+	margin: 0.3rem 0;
+}
+.chapter li.planned {
+	color: var(--muted);
+}
+.chapter li.planned .status {
+	font-size: 0.85rem;
+	font-style: italic;
+}
+.mismatches ul {
+	margin: 0.5rem 0 0;
+	font-size: 0.9rem;
+}
