@@ -33,7 +33,7 @@ const SETTLE = 100;
 const SELECTION_LIMIT = 2000;
 /** Where the shell listens for the teacher's orders and says they are done: `ORDER_PATHS` in `lib/orders.js`. */
 const ORDERS = { listen: "/shell/orders", done: "/shell/done" };
-/** The attribute that marks what the teacher points at; `classroom.css` draws it. */
+/** The attribute on what the teacher points at; `classroom.css` draws the highlight. */
 const POINTED = "data-feris-pointed";
 
 /** The page the shell's address points at. */
@@ -163,6 +163,8 @@ let opening = /** @type {{ order: number, page: string } | undefined} */ (undefi
 
 /** Opens a page in the frame; the order is done once it has loaded. */
 function open(/** @type {number} */ order, /** @type {string} */ target) {
+	if (opening) done(opening.order, `the teacher opened ${target} before ${opening.page} loaded.`);
+	opening = undefined;
 	if (page() === target) return done(order, null);
 	opening = { order, page: target };
 	frame.contentWindow?.location.assign(target);
@@ -207,8 +209,9 @@ let loads = 0;
 frame.addEventListener("load", async () => {
 	const load = ++loads;
 	history.replaceState(null, "", `#${encodeURI(showing())}`);
-	if (opening && page() === opening.page) {
-		done(opening.order, null);
+	if (opening) {
+		const moved = `the student moved to ${page()} before ${opening.page} loaded.`;
+		done(opening.order, page() === opening.page ? null : moved);
 		opening = undefined;
 	}
 	document.title = frame.contentDocument?.title || "Classroom";

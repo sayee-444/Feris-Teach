@@ -58,30 +58,28 @@ const highlighted = (/** @type {Frame} */ frame) =>
 			.map((element) => element.id),
 	);
 
+/**
+ * Whether the element with this id is in sight: `wholly`, or else in part. It runs in the page.
+ *
+ * @param {[id: string, wholly: boolean]} question
+ */
+function sight([id, wholly]) {
+	const element = document.getElementById(id);
+	if (!element) return false;
+	const { top, bottom } = element.getBoundingClientRect();
+	return wholly ? top >= 0 && bottom <= innerHeight : bottom > 0 && top < innerHeight;
+}
+
 /** Waits until the element with this id is wholly in sight, once any scrolling has finished. */
 async function inSight(/** @type {Frame} */ frame, /** @type {string} */ id) {
 	await frame
-		.waitForFunction(
-			(id) => {
-				const element = document.getElementById(id);
-				if (!element) return false;
-				const { top, bottom } = element.getBoundingClientRect();
-				return top >= 0 && bottom <= innerHeight;
-			},
-			id,
-			{ timeout: 5_000 },
-		)
+		.waitForFunction(sight, /** @type {[string, boolean]} */ ([id, true]), { timeout: 5_000 })
 		.catch(() => assert.fail(`"${id}" was not scrolled into view`));
 }
 
 /** Whether the element with this id is in sight at all. */
 const visible = (/** @type {Frame} */ frame, /** @type {string} */ id) =>
-	frame.evaluate((id) => {
-		const element = document.getElementById(id);
-		if (!element) return false;
-		const { top, bottom } = element.getBoundingClientRect();
-		return bottom > 0 && top < innerHeight;
-	}, id);
+	frame.evaluate(sight, /** @type {[string, boolean]} */ ([id, false]));
 
 /** @type {AutomaticScenario} */
 export default {
@@ -139,7 +137,13 @@ export default {
 			assert.deepEqual(await highlighted(frame), ["variable"]);
 			await inSight(frame, "variable");
 
-			succeeds(feris, "classroom", "open", REFERENCE);
+			// A path written the long way opens the same page.
+			succeeds(
+				feris,
+				"classroom",
+				"open",
+				"/books/basic-algebra/lessons/../reference/./rules.html",
+			);
 			assert.deepEqual(await onScreen(shell), { frame: REFERENCE, address: REFERENCE });
 			assert.deepEqual(
 				await highlighted(frame),

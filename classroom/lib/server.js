@@ -38,6 +38,7 @@ import { answerReport, classRecord, PATHS, viewReport } from "./state.js";
 /** @import { IncomingMessage, ServerResponse } from "node:http" */
 /** @import { HtmlTagDescriptor, Plugin, ViteDevServer } from "vite" */
 /** @import { Classroom, ClassroomOptions } from "../types.js" */
+/** @import { Order } from "./orders.js" */
 
 const WEB = fileURLToPath(new URL("../web", import.meta.url));
 
@@ -112,6 +113,9 @@ function sendStatus(/** @type {ServerResponse} */ res, /** @type {number} */ sta
 	res.end();
 }
 
+/** The paths where the teacher's toolbelt and the shell talk with the server. */
+const CONTROL = new Set([...Object.values(PATHS), ...Object.values(ORDER_PATHS)]);
+
 /** The most a report from the shell may weigh. */
 const REPORT_LIMIT = 64 * 1024;
 
@@ -172,10 +176,10 @@ function bookPath(path) {
  * The plugin that makes Vite a classroom.
  *
  * @param {string[]} booksDirs
- * @param {ReturnType<typeof orderLine>} line The shells listening for the teacher's orders
+ * @param {ReturnType<typeof orderLine>} orders The shells listening for the teacher's orders
  * @returns {Plugin}
  */
-function classroom(booksDirs, line) {
+function classroom(booksDirs, orders) {
 	const dirs = booksDirs.map((dir) => resolve(dir));
 	/** The book a file on disk belongs to, and the file's path within the book. */
 	const owner = (/** @type {string} */ path) => {
@@ -293,18 +297,29 @@ function classroom(booksDirs, line) {
 	 */
 	async function order(req, res, path, body) {
 		const { page, id } = /** @type {any} */ (body ?? {});
-		const closed = `the classroom is not open in a browser. Open http://${req.headers.host}/ first.`;
-		let reason;
+		/** @type {Order} */
+		let given;
 		if (path === ORDER_PATHS.open) {
 			if (typeof page !== "string") return sendStatus(res, 400);
-			if (!isPage(page)) return sendRefusal(res, `there is no page "${page}" in the classroom.`);
-			if (!line.listening()) return sendRefusal(res, closed);
-			reason = await line.give({ kind: "open", page });
+			// Written the way the browser will show it, so that the shell knows it when it loads.
+			const plain = /[?#]/.test(page)
+				? undefined
+				: decodeURI(new URL(encodeURI(page), "http://localhost").pathname);
+			if (plain === undefined || !isPage(plain)) {
+				return sendRefusal(res, `there is no page "${page}" in the classroom.`);
+			}
+			given = { kind: "open", page: plain };
 		} else {
 			if (!(id === null || typeof id === "string")) return sendStatus(res, 400);
-			if (!line.listening()) return sendRefusal(res, closed);
-			reason = await line.give({ kind: "point", id });
+			given = { kind: "point", id };
 		}
+		if (!orders.listening()) {
+			return sendRefusal(
+				res,
+				`the classroom is not open in a browser. Open http://${req.headers.host}/ first.`,
+			);
+		}
+		const reason = await orders.give(given);
 		return reason === null ? sendStatus(res, 204) : sendRefusal(res, reason);
 	}
 
@@ -331,7 +346,7 @@ function classroom(booksDirs, line) {
 			return req.method === "GET" ? sendJson(res, record.state()) : sendStatus(res, 405);
 		}
 		if (path === ORDER_PATHS.orders) {
-			return req.method === "GET" ? line.listen(res) : sendStatus(res, 405);
+			return req.method === "GET" ? orders.listen(res) : sendStatus(res, 405);
 		}
 		if (req.method !== "POST") return sendStatus(res, 405);
 		const body = await readJson(req);
@@ -341,7 +356,7 @@ function classroom(booksDirs, line) {
 		if (path === ORDER_PATHS.done) {
 			const report = doneReport(body);
 			if (report === undefined) return sendStatus(res, 400);
-			line.done(report.order, report.reason);
+			orders.done(report.order, report.reason);
 		} else if (path === PATHS.view) {
 			const report = viewReport(body);
 			if (report === undefined) return sendStatus(res, 400);
@@ -383,7 +398,7 @@ function classroom(booksDirs, line) {
 			res.setHeader("Cache-Control", "no-store");
 			return res.end(bar(url.searchParams.get("page") ?? ""));
 		}
-		if ([...Object.values(PATHS), ...Object.values(ORDER_PATHS)].includes(path)) {
+		if (CONTROL.has(path)) {
 			return control(req, res, path);
 		}
 		if (path === "/books/") {
@@ -436,7 +451,7 @@ function classroom(booksDirs, line) {
 export async function startClassroom({ booksDirs, port }) {
 	// Loaded here, so that a part that only reads the classroom state never waits for Vite.
 	const { createServer } = await import("vite");
-	const line = orderLine();
+	const orders = orderLine();
 	const server = await createServer({
 		configFile: false,
 		root: WEB,
@@ -453,7 +468,7 @@ export async function startClassroom({ booksDirs, port }) {
 			fs: { strict: true, allow: [WEB] },
 		},
 		optimizeDeps: { noDiscovery: true, include: [] },
-		plugins: [classroom(booksDirs, line)],
+		plugins: [classroom(booksDirs, orders)],
 	});
 	await server.listen();
 	const address = server.httpServer?.address();
@@ -465,7 +480,7 @@ export async function startClassroom({ booksDirs, port }) {
 		url: `http://127.0.0.1:${address.port}/`,
 		close: () => {
 			// The shells' streams never end on their own, and the server waits for them.
-			line.close();
+			orders.close();
 			return server.close();
 		},
 	};

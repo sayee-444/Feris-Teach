@@ -27,7 +27,7 @@
 }
 
 /* What the teacher points at (`feris classroom point`): it stands out and draws the eye as it
-   comes. The shell marks it with `data-feris-pointed`. */
+   comes. The shell gives it the attribute `data-feris-pointed`. */
 [data-feris-pointed] {
 	outline: 3px solid var(--accent);
 	outline-offset: 0.4rem;

@@ -50,11 +50,20 @@ export function orderLine() {
 	const shells = new Set();
 	/**
 	 * The orders given and not yet answered, by number, with how many shells have yet to answer.
+	 * A shell that goes away, closed or reloaded, counts as one that could not carry it out.
 	 *
 	 * @type {Map<number, { waiting: number, finish: (reason: string | null) => void }>}
 	 */
 	const pending = new Map();
 	let given = 0;
+
+	/** Takes a shell's word on an order: done, or refused and why. */
+	const done = (/** @type {number} */ number, /** @type {string | null} */ reason) => {
+		const order = pending.get(number);
+		if (order === undefined) return;
+		order.waiting -= 1;
+		if (reason === null || order.waiting === 0) order.finish(reason);
+	};
 
 	return {
 		/** Keeps a shell's stream open, to send it every order from now on. */
@@ -63,7 +72,12 @@ export function orderLine() {
 			res.setHeader("Cache-Control", "no-store");
 			res.flushHeaders();
 			shells.add(res);
-			res.on("close", () => shells.delete(res));
+			res.on("close", () => {
+				shells.delete(res);
+				for (const [number] of pending) {
+					done(number, "the classroom in the browser closed or reloaded before it was done.");
+				}
+			});
 		},
 
 		/** Whether any shell is listening: whether the classroom is open in a browser. */
@@ -95,18 +109,7 @@ export function orderLine() {
 			});
 		},
 
-		/**
-		 * Takes a shell's word on an order: done, or refused and why.
-		 *
-		 * @param {number} number
-		 * @param {string | null} reason
-		 */
-		done(number, reason) {
-			const order = pending.get(number);
-			if (order === undefined) return;
-			order.waiting -= 1;
-			if (reason === null || order.waiting === 0) order.finish(reason);
-		},
+		done,
 
 		/** Ends every shell's stream, so that the server can stop. */
 		close() {
@@ -141,7 +144,7 @@ export function doneReport(body) {
  * @param {unknown} body
  * @throws {ClassroomRefusal} When the classroom could not carry the order out
  */
-async function give(url, path, body) {
+async function post(url, path, body) {
 	const response = await fetch(new URL(path, url), {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -164,7 +167,7 @@ async function give(url, path, body) {
  * @throws {ClassroomRefusal} When there is no such page, or the classroom is not open
  */
 export function openPage(url, page) {
-	return give(url, ORDER_PATHS.open, { page });
+	return post(url, ORDER_PATHS.open, { page });
 }
 
 /**
@@ -177,5 +180,5 @@ export function openPage(url, page) {
  *   open
  */
 export function pointAt(url, id) {
-	return give(url, ORDER_PATHS.point, { id });
+	return post(url, ORDER_PATHS.point, { id });
 }
