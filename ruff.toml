@@ -2,4 +2,17 @@ line-length = 100
 target-version = "py312"
 
 [lint]
-select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "TID", "TC"]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+# A part's private modules, forbidden to the code outside it (ADR-0003). List every `_name.py`
+# of a part here by its full dotted name, with a message that names the part's public interface:
+#
+#   "feris_voice._engine".msg = "Private to the voice service. Import from feris_voice."
+[lint.flake8-tidy-imports.banned-api]
+
+[lint.per-file-ignores]
+# Inside a part, its own private modules are its to import.
+"voice/src/feris_voice/**" = ["TID251"]

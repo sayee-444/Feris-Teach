@@ -12,6 +12,29 @@
     "indentStyle": "tab",
     "lineWidth": 100
   },
+  "linter": {
+    "rules": {
+      "correctness": {
+        "noPrivateImports": "error"
+      },
+      "suspicious": {
+        "noImportCycles": "error"
+      },
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["**/toolbelt/**"],
+                "message": "This reaches inside the toolbelt. Import its entry as \"#toolbelt\" (ADR-0003)."
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
   "overrides": [
     {
       "includes": ["**/*.json"],

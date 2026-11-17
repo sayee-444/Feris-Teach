@@ -13,14 +13,23 @@ Work out which one the human wants before acting.
 
 ## Where things live
 
-- `toolbelt/`: the teacher's toolbelt, `feris`, the single interface to everything outside the conversation. Node, plain JavaScript with JSDoc types. Run it with `npm run feris -- <command>`. Its tests in `toolbelt/test/` drive it as a separate process, the way the teacher does.
+- `toolbelt/`: the teacher's toolbelt, `feris`, the single interface to everything outside the conversation. Node, plain JavaScript with JSDoc types. Other parts import its entry, `toolbelt/index.js`, as `#toolbelt`. Run it with `npm run feris -- <command>`. Its tests in `toolbelt/test/` drive it as a separate process, the way the teacher does.
 - `lab/scenarios/`: the lab's scenarios, one self-contained folder each. `npm run feris -- lab list` lists them and `npm run feris -- lab run <scenario>` runs one. To add a scenario, copy `example-automatic/` or `example-human/`; the lab itself needs no change.
-- `voice/`: the voice service, a Python package managed with uv. Read `docs/agents/python.md` before writing, running or reviewing Python.
+- `voice/`: the voice service, a Python package managed with uv.
 - `assets/`: the shared lesson components (stylesheet, quiz, token chips) from before the classroom existed. Planned: they become the classroom's shared components. They are excluded from the lint until then.
 - `student/`: the student folder, git-ignored (ADR-0002). The profile, the student's books with their state, the ratings of the lab's human scenarios (`student/lab/`), and later the sources and the inbox. Nothing in it is ever committed.
-- `docs/agents/`: instructions for agents, covering the issue tracker, the triage labels, the domain docs and Python.
+- `test/`: the tests of the repo as a whole. `parts.test.js` holds the boundaries between parts.
+- `docs/agents/`: instructions for agents, covering the issue tracker, the triage labels, the domain docs, JavaScript and Python.
 - `docs/adr/`: the architecture decision records.
 - `.github/workflows/`: the checks that run on every pull request.
+
+## Parts
+
+Feris-Teach is split into **parts**, one folder each at the root, and each part's one entry file is its whole public interface (ADR-0003). The checks fail when an import reaches inside another part.
+
+- Before writing, running or reviewing JavaScript, read `docs/agents/javascript.md`.
+- Before writing, running or reviewing Python, read `docs/agents/python.md`.
+- A new part goes in a new folder at the root, named with the glossary's word for it. "Adding a part" in `docs/agents/javascript.md` lists what to register; a Python part follows "Parts and their interface" in `docs/agents/python.md`.
 
 ## Done means checked
 

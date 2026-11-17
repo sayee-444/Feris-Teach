@@ -6,7 +6,9 @@
  * comments, and saves them in the student folder.
  */
 
-/** @type {import("../../../toolbelt/lib/lab.js").HumanScenario} */
+/** @import { HumanScenario } from "#toolbelt" */
+
+/** @type {HumanScenario} */
 export default {
 	kind: "human",
 	title: "The toolbelt's help is easy to read",
