@@ -2,7 +2,7 @@
 
 The Node code of Feris-Teach is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler (`npm run check:node`). It is split into **parts** (ADR-0003). Today two parts have code of their own: the toolbelt, in `toolbelt/`, which also runs the lab, and the classroom, in `classroom/`. The lab's scenarios in `lab/scenarios/` are a self-registering set, found at run time.
 
-The classroom's `web/` folder holds scripts that run in the student's browser, not in Node. They are ES modules with no imports, checked by the same tools; the classroom adds them to every page of a book.
+The classroom's `web/` folder holds scripts that run in the student's browser, not in Node. They are ES modules with no imports, checked by the same tools. `shell.js` runs in the shell, the one page that never reloads (ADR-0004); the others run in every page of a book, inside the shell's frame.
 
 ## One entry file per part
 

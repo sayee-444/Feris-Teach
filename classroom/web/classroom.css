@@ -1,39 +1,4 @@
-/* The classroom's own look: the bar at the top of every page of a book, and its pages. */
-
-nav.classroom-bar {
-	position: sticky;
-	top: 0;
-	z-index: 10;
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.3rem 1rem;
-	padding: 0.5rem 1rem;
-	background: var(--bg);
-	border-bottom: 1px solid var(--line);
-	font-size: 0.9rem;
-}
-nav.classroom-bar a {
-	text-decoration: none;
-}
-nav.classroom-bar a:hover {
-	text-decoration: underline;
-}
-nav.classroom-bar .index {
-	font-weight: 600;
-}
-nav.classroom-bar .spacer {
-	flex: 1;
-}
-nav.classroom-bar .theme {
-	font: inherit;
-	cursor: pointer;
-	background: none;
-	color: var(--fg);
-	border: 1px solid var(--line);
-	border-radius: 6px;
-	padding: 0.1rem 0.5rem;
-}
+/* The look of the pages the classroom writes itself: the list of books and a book's index page. */
 
 .chapter ul.lessons {
 	list-style: none;

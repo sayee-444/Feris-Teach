@@ -58,9 +58,9 @@ test("the classroom starts on localhost, serves the sample book and stops withou
 	assert.equal(start.status, 0);
 	const { url, pid } = opened(start.stdout);
 
-	const home = await fetch(url);
-	assert.equal(home.status, 200);
-	assert.match(await home.text(), /Basic algebra/);
+	const library = await fetch(new URL("books/", url));
+	assert.equal(library.status, 200);
+	assert.match(await library.text(), /Basic algebra/);
 	const lesson = await fetch(new URL("books/basic-algebra/lessons/01-variables.html", url));
 	assert.equal(lesson.status, 200);
 	assert.match(await lesson.text(), /<h1>Variables and expressions<\/h1>/);
@@ -70,6 +70,20 @@ test("the classroom starts on localhost, serves the sample book and stops withou
 	assert.equal(stop.stdout, "The classroom has stopped.\n");
 	assert.equal(isRunning(pid), false, `the classroom's process ${pid} is still running`);
 	await assert.rejects(fetch(url), "the classroom still answers after it stopped");
+});
+
+test("the classroom is one page that never reloads: the books open inside it", async (t) => {
+	const { feris } = student(t);
+	const { url } = opened(feris("classroom", "start").stdout);
+
+	const shell = await (await fetch(url)).text();
+	const lesson = await (
+		await fetch(new URL("books/basic-algebra/lessons/01-variables.html", url))
+	).text();
+
+	assert.match(shell, /<iframe name="lesson"/, "the home page has no frame for the book");
+	assert.doesNotMatch(shell, /@vite\/client/, "the home page would reload with the books");
+	assert.match(lesson, /@vite\/client/, "a lesson does not reload when it changes");
 });
 
 test("starting the classroom again reports the one already open", (t) => {
@@ -108,11 +122,11 @@ test("the classroom serves the student's books next to the sample book", async (
 	cpSync(sample, join(dir, "books", "my-algebra"), { recursive: true });
 	const { url } = opened(feris("classroom", "start").stdout);
 
-	const home = await (await fetch(url)).text();
+	const library = await (await fetch(new URL("books/", url))).text();
 	const lesson = await fetch(new URL("books/my-algebra/lessons/01-variables.html", url));
 
-	assert.match(home, /href="\/books\/basic-algebra\/"/);
-	assert.match(home, /href="\/books\/my-algebra\/"/);
+	assert.match(library, /href="\/books\/basic-algebra\/"/);
+	assert.match(library, /href="\/books\/my-algebra\/"/);
 	assert.equal(lesson.status, 200);
 });
 

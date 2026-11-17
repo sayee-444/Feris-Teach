@@ -2,17 +2,30 @@
  * The classroom's server: Vite on localhost, serving the books with live reload.
  *
  * URLs:
- *   /                      the home page, listing the books
+ *   /                      the shell: the one page the student keeps open (ADR-0004)
+ *   /shell/bar?page=<path> the shell's bar while <path> is on screen
+ *   /books/                the list of books
  *   /books/<book>/         a book's index page
- *   /books/<book>/<file>   a file of a book; its pages get the classroom's bar and components
+ *   /books/<book>/<file>   a file of a book; its pages get the components and live reload
  *   /<file>                the classroom's own stylesheets and scripts, from `web/`
+ *
+ * Everything under /books/ shows in the shell's frame; only the frame reloads.
  */
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import { checkBook, readIndex } from "./book.js";
-import { bookBar, bookUrl, brokenBookPage, homePage, indexPage } from "./pages.js";
+import {
+	bookBar,
+	bookUrl,
+	brokenBookPage,
+	indexPage,
+	libraryBar,
+	libraryPage,
+	shellPage,
+	THEME,
+} from "./pages.js";
 
 /** @import { IncomingMessage, ServerResponse } from "node:http" */
 /** @import { HtmlTagDescriptor, Plugin, ViteDevServer } from "vite" */
@@ -32,13 +45,6 @@ const CONTENT_TYPES = /** @type {Record<string, string>} */ ({
 	".txt": "text/plain; charset=utf-8",
 	".webp": "image/webp",
 });
-
-/**
- * Sets the theme before the page paints, so that a student who chose dark never sees a flash
- * of light. The choice is kept in the browser and shared by every page of the classroom; the
- * switch in `web/classroom.js` writes it under the same key.
- */
-const THEME = `try{var t=localStorage.getItem("feris-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
 /** Whether `path` is `dir` or lies inside it. */
 function isInside(/** @type {string} */ dir, /** @type {string} */ path) {
@@ -146,7 +152,7 @@ function classroom(booksDirs) {
 			if (owner(resolve(file)) !== undefined) return [];
 		},
 
-		transformIndexHtml(_html, { path }) {
+		transformIndexHtml() {
 			/** @type {HtmlTagDescriptor[]} */
 			const tags = [
 				{ tag: "script", children: THEME, injectTo: "head-prepend" },
@@ -160,7 +166,7 @@ function classroom(booksDirs) {
 					attrs: { rel: "stylesheet", href: "/classroom.css" },
 					injectTo: "head-prepend",
 				},
-				...["classroom.js", "quiz.js", "token-chips.js"].map(
+				...["page.js", "quiz.js", "token-chips.js"].map(
 					(script) =>
 						/** @type {HtmlTagDescriptor} */ ({
 							tag: "script",
@@ -169,23 +175,24 @@ function classroom(booksDirs) {
 						}),
 				),
 			];
-			const target = bookPath(decodeURIComponent(path));
-			const dir = target && findBooks(dirs).get(target.name);
-			const { index } = dir ? readIndex(dir) : { index: undefined };
-			if (target && index) {
-				tags.push({
-					tag: "nav",
-					attrs: { class: "classroom-bar" },
-					children: bookBar(target.name, index, target.file ?? ""),
-					injectTo: "body-prepend",
-				});
-			}
 			return tags;
 		},
 	};
 
 	/**
-	 * Serves the home page and the books; anything else goes on to Vite.
+	 * The shell's bar while a page is on screen.
+	 *
+	 * @param {string} page The decoded path of the page
+	 */
+	function bar(page) {
+		const target = bookPath(page);
+		const dir = target && findBooks(dirs).get(target.name);
+		const { index } = dir ? readIndex(dir) : { index: undefined };
+		return target && index ? bookBar(target.name, index, target.file ?? "") : libraryBar();
+	}
+
+	/**
+	 * Serves the shell, its bar and the books; anything else goes on to Vite.
 	 *
 	 * @param {ViteDevServer} server
 	 * @param {IncomingMessage} req
@@ -201,11 +208,22 @@ function classroom(booksDirs) {
 			return notFound(res);
 		}
 		if (path === "/" || path === "/index.html") {
+			// Sent as it is: without Vite's client, the shell never reloads.
+			res.setHeader("Content-Type", "text/html; charset=utf-8");
+			res.setHeader("Cache-Control", "no-store");
+			return res.end(shellPage());
+		}
+		if (path === "/shell/bar") {
+			res.setHeader("Content-Type", "text/html; charset=utf-8");
+			res.setHeader("Cache-Control", "no-store");
+			return res.end(bar(url.searchParams.get("page") ?? ""));
+		}
+		if (path === "/books/") {
 			const books = [...findBooks(dirs)].map(([name, dir]) => ({
 				name,
 				title: readIndex(dir).index?.title ?? name,
 			}));
-			return sendHtml(server, res, url.pathname, homePage(books));
+			return sendHtml(server, res, url.pathname, libraryPage(books));
 		}
 
 		const target = bookPath(path);

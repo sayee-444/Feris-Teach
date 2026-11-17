@@ -45,8 +45,10 @@ export default {
 			assert.equal(start.status, 0, `"feris classroom start" failed: ${start.stderr}`);
 			const url = String(/open at (\S+) /.exec(start.stdout)?.[1]);
 			const page = await (await browser()).newPage();
-			await page.goto(`${url}books/broken/`);
-			const shown = await page.locator(".mismatches li").allTextContents();
+			await page.goto(`${url}#/books/broken/`);
+			const mismatches = page.frameLocator("iframe[name=lesson]").locator(".mismatches li");
+			await mismatches.first().waitFor({ timeout: 10_000 });
+			const shown = await mismatches.allTextContents();
 			assert.deepEqual(shown, MISMATCHES, "the index page does not show the mismatches");
 		} finally {
 			feris("classroom", "stop");

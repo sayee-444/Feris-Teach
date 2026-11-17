@@ -1,6 +1,7 @@
 /**
- * The pages the classroom writes itself: the home page listing the books, a book's index page,
- * and the bar at the top of every book page that moves the student around the book.
+ * The pages the classroom writes itself: the one page the student keeps open (the shell,
+ * ADR-0004), the bar at its top, the list of books, and a book's index page. The book's pages
+ * show inside the shell, in its frame named "lesson".
  */
 
 /** @import { BookIndex, Lesson } from "../types.js" */
@@ -60,7 +61,103 @@ export function bookUrl(/** @type {string} */ book, file = "") {
 	return `/books/${encodeURIComponent(book)}/${path}`;
 }
 
-/** A whole page in the classroom's layout. */
+/**
+ * Sets the theme before a page paints, so that a student who chose dark never sees a flash of
+ * light. The shell's switch, in `web/shell.js`, keeps the choice in the browser under this key.
+ *
+ * @package
+ */
+export const THEME = `try{var t=localStorage.getItem("feris-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+
+/**
+ * The one page the student keeps open: the bar, and the frame where the book's pages show. It
+ * never reloads, so what lives in it (the class's state, later the persona's avatar) lasts the
+ * whole class. It gets no live reload: only the frame does.
+ *
+ * @package
+ */
+export function shellPage() {
+	const { theme } = WORDS.en;
+	return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classroom</title>
+<script>${THEME}</script>
+<link rel="stylesheet" href="/lesson.css">
+<link rel="stylesheet" href="/shell.css">
+<script type="module" src="/shell.js"></script>
+</head>
+<body class="shell">
+<header class="classroom-bar"><nav></nav><button type="button" class="theme" title="${theme}" aria-label="${theme}">◐</button></header>
+<iframe name="lesson" title="Book"></iframe>
+</body>
+</html>
+`;
+}
+
+/** A link in the bar, which opens in the shell's frame. */
+function barLink(
+	/** @type {string} */ href,
+	/** @type {string} */ attributes,
+	/** @type {string} */ label,
+) {
+	return `<a ${attributes} href="${href}" target="lesson">${label}</a>`;
+}
+
+/**
+ * The bar while a page that is not in a book is on screen: the way to the books.
+ *
+ * @package
+ */
+export function libraryBar() {
+	return barLink("/books/", 'class="library"', WORDS.en.books);
+}
+
+/**
+ * The bar while a page of a book is on screen: the books, the book's index page, the lessons
+ * before and after the one on screen, the glossary and the reference.
+ *
+ * @param {string} name The book's name
+ * @param {BookIndex} index
+ * @param {string} file The page on screen, from the book's folder
+ * @returns {string} The bar's inner HTML
+ * @package
+ */
+export function bookBar(name, index, file) {
+	const words = wordsFor(index.language);
+	const ready = index.chapters
+		.flatMap((chapter) => chapter.lessons)
+		.filter((lesson) => lesson.status === "ready");
+	const position = ready.findIndex((lesson) => lesson.file === file);
+	const neighbour = (
+		/** @type {Lesson | undefined} */ lesson,
+		/** @type {string} */ rel,
+		/** @type {string} */ label,
+	) =>
+		lesson && position !== -1
+			? barLink(
+					bookUrl(name, lesson.file),
+					`rel="${rel}" title="${escapeHtml(lesson.title)}"`,
+					label,
+				)
+			: "";
+	const reference = index.reference
+		.map(({ title, file }) => barLink(bookUrl(name, file), 'class="reference"', escapeHtml(title)))
+		.join("");
+	return [
+		barLink("/books/", 'class="library"', words.books),
+		barLink(bookUrl(name), 'class="index"', escapeHtml(index.title)),
+		neighbour(ready[position - 1], "prev", `← ${words.previous}`),
+		neighbour(ready[position + 1], "next", `${words.next} →`),
+		'<span class="spacer"></span>',
+		barLink(bookUrl(name, index.glossary), 'class="glossary"', words.glossary),
+		reference,
+	].join("");
+}
+
+/** A whole page in the classroom's layout, shown in the shell's frame. */
 function page(
 	/** @type {{ language: string, title: string, body: string }} */ { language, title, body },
 ) {
@@ -81,20 +178,19 @@ ${body}
 }
 
 /**
- * The home page: every book the classroom serves.
+ * The list of every book the classroom serves.
  *
  * @param {{ name: string, title: string }[]} books
  * @package
  */
-export function homePage(books) {
+export function libraryPage(books) {
 	const items = books
 		.map(({ name, title }) => `<li><a href="${bookUrl(name)}">${escapeHtml(title)}</a></li>`)
 		.join("\n");
 	return page({
 		language: "en",
-		title: "Classroom",
-		body: `<header class="lesson"><h1>Classroom</h1></header>
-<h2>${WORDS.en.books}</h2>
+		title: WORDS.en.books,
+		body: `<header class="lesson"><h1>${WORDS.en.books}</h1></header>
 <ul class="books">
 ${items}
 </ul>`,
@@ -179,45 +275,4 @@ function mismatchNote(/** @type {string} */ name, /** @type {string[]} */ mismat
 ${items}
 </ul>
 </div>`;
-}
-
-/**
- * The bar at the top of every page of a book: back to the index page, the lessons before and after
- * the one on screen, the glossary, the reference, and the switch between light and dark.
- *
- * @param {string} name The book's name
- * @param {BookIndex} index
- * @param {string} file The page on screen, from the book's folder
- * @returns {string} The bar's inner HTML
- * @package
- */
-export function bookBar(name, index, file) {
-	const words = wordsFor(index.language);
-	const ready = index.chapters
-		.flatMap((chapter) => chapter.lessons)
-		.filter((lesson) => lesson.status === "ready");
-	const position = ready.findIndex((lesson) => lesson.file === file);
-	const link = (
-		/** @type {Lesson | undefined} */ lesson,
-		/** @type {string} */ rel,
-		/** @type {string} */ label,
-	) =>
-		lesson
-			? `<a rel="${rel}" href="${bookUrl(name, lesson.file)}" title="${escapeHtml(lesson.title)}">${label}</a>`
-			: "";
-	const reference = index.reference
-		.map(
-			({ title, file }) =>
-				`<a class="reference" href="${bookUrl(name, file)}">${escapeHtml(title)}</a>`,
-		)
-		.join("");
-	return [
-		`<a class="index" href="${bookUrl(name)}">${escapeHtml(index.title)}</a>`,
-		position === -1 ? "" : link(ready[position - 1], "prev", `← ${words.previous}`),
-		position === -1 ? "" : link(ready[position + 1], "next", `${words.next} →`),
-		'<span class="spacer"></span>',
-		`<a class="glossary" href="${bookUrl(name, index.glossary)}">${words.glossary}</a>`,
-		reference,
-		`<button type="button" class="theme" title="${words.theme}" aria-label="${words.theme}">◐</button>`,
-	].join("");
 }

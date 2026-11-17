@@ -1,6 +1,7 @@
 /**
- * Live reload: editing a lesson file refreshes the page where it is open, and only there;
- * editing a book's index refreshes every page of the book.
+ * Live reload: editing a lesson file refreshes the lesson where it is open, and only there;
+ * editing a book's index refreshes every page of the book. The shell around the pages never
+ * reloads (ADR-0004).
  */
 import assert from "node:assert/strict";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -9,7 +10,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** @import { AutomaticScenario } from "#toolbelt" */
-/** @import { Browser, Page } from "playwright" */
+/** @import { Browser, Frame, Page } from "playwright" */
 
 const sample = fileURLToPath(new URL("../../../books/basic-algebra", import.meta.url));
 
@@ -20,38 +21,50 @@ function edit(/** @type {string} */ file, /** @type {string} */ from, /** @type 
 	writeFileSync(file, text.replace(from, to));
 }
 
+/** Marks a window, so that a reload shows as the mark gone. */
+const mark = (/** @type {Page | Frame} */ where) =>
+	where.evaluate(() => {
+		/** @type {any} */ (window).marked = true;
+	});
+
+/** Whether a window has not reloaded since it was marked. */
+const marked = (/** @type {Page | Frame} */ where) =>
+	where.evaluate(() => /** @type {any} */ (window).marked === true);
+
 /**
- * Opens a page and waits until its live reload is connected. The page is marked, so a reload
- * shows as the mark gone.
+ * Opens the classroom on a page of a book and waits until the page's live reload is connected.
+ * The shell and the page are both marked.
  *
  * @param {Browser} browser
- * @param {string} url
+ * @param {string} url The classroom's address
+ * @param {string} path The page's path
  */
-async function open(browser, url) {
+async function open(browser, url, path) {
 	const page = await browser.newPage();
 	const connected = page.waitForEvent("console", (message) =>
 		message.text().includes("[vite] connected"),
 	);
-	await page.goto(url);
+	await page.goto(`${url}#${path}`);
 	await connected;
-	await page.evaluate(() => {
-		/** @type {any} */ (window).marked = true;
-	});
-	return page;
+	const frame = page.frame({ name: "lesson" });
+	assert.ok(frame, "the classroom has no frame for the book");
+	await page.waitForFunction(
+		(path) => document.querySelector("iframe")?.contentWindow?.location.pathname === path,
+		path,
+	);
+	await mark(page);
+	await mark(frame);
+	return { page, frame };
 }
 
-/** Whether the page has not reloaded since it was opened. */
-const marked = (/** @type {Page} */ page) =>
-	page.evaluate(() => /** @type {any} */ (window).marked === true);
-
-/** Waits until `selector` shows `text`, or fails saying what was expected. */
+/** Waits until `selector`, in the shell or in its frame, shows `text`. */
 async function waitForText(
-	/** @type {Page} */ page,
+	/** @type {Page | Frame} */ where,
 	/** @type {string} */ selector,
 	/** @type {string} */ text,
 	/** @type {string} */ failure,
 ) {
-	await page
+	await where
 		.waitForFunction(
 			([selector, text]) => document.querySelector(String(selector))?.textContent === text,
 			[selector, text],
@@ -63,7 +76,7 @@ async function waitForText(
 /** @type {AutomaticScenario} */
 export default {
 	kind: "automatic",
-	title: "Editing a lesson file refreshes the open page without a manual reload",
+	title: "Editing a lesson file refreshes the open lesson, and never the shell around it",
 	async check({ feris, env, browser }) {
 		const root = mkdtempSync(join(tmpdir(), "feris-scenario-"));
 		const book = join(root, "books", "algebra");
@@ -76,26 +89,33 @@ export default {
 			const url = String(/open at (\S+) /.exec(start.stdout)?.[1]);
 
 			const chromium = await browser();
-			const first = await open(chromium, `${url}books/algebra/lessons/01-variables.html`);
-			const second = await open(chromium, `${url}books/algebra/lessons/02-like-terms.html`);
+			const first = await open(chromium, url, "/books/algebra/lessons/01-variables.html");
+			const second = await open(chromium, url, "/books/algebra/lessons/02-like-terms.html");
 
 			edit(
 				join(book, "lessons/01-variables.html"),
 				"<h1>Variables and expressions</h1>",
 				"<h1>Letters for numbers</h1>",
 			);
-			await waitForText(first, "h1", "Letters for numbers", "the edited lesson did not refresh");
-			assert.equal(await marked(first), false, "the edited lesson changed without a reload");
-			await second.waitForTimeout(500);
-			assert.equal(await marked(second), true, "a lesson that did not change reloaded too");
+			await waitForText(
+				first.frame,
+				"h1",
+				"Letters for numbers",
+				"the edited lesson did not refresh",
+			);
+			assert.equal(await marked(first.frame), false, "the edited lesson changed without a reload");
+			assert.equal(await marked(first.page), true, "the shell reloaded with the lesson");
+			await second.page.waitForTimeout(500);
+			assert.equal(await marked(second.frame), true, "a lesson that did not change reloaded too");
 
 			edit(join(book, "index.json"), '"title": "Basic algebra"', '"title": "Algebra, edited"');
 			await waitForText(
-				second,
-				"nav.classroom-bar .index",
+				second.page,
+				"header.classroom-bar .index",
 				"Algebra, edited",
-				"editing the index did not refresh the pages of the book",
+				"editing the index did not refresh the bar of the book",
 			);
+			assert.equal(await marked(second.page), true, "the shell reloaded with the book's index");
 		} finally {
 			feris("classroom", "stop");
 			rmSync(root, { recursive: true, force: true });
