@@ -1,0 +1,16 @@
+# The voice of Feris unless the student says otherwise in `student/voice.toml`, which has the
+# same two tables. A table there that names another engine or player starts from empty
+# settings; one that names the same keeps these and changes the keys it sets.
+
+[engine]
+# One of the engines in `voice/src/feris_voice/engines/`.
+name = "piper"
+# A Piper voice, downloaded into `student/voices/` (see the README).
+voice = "es_ES-davefx-medium"
+# Optional Piper settings: length_scale (above 1 is slower), noise_scale, noise_w_scale, volume,
+# speaker (for a voice with several speakers).
+
+[player]
+# "native" plays through the machine's own sound: PipeWire, PulseAudio or ALSA on Linux,
+# Windows' own player on Windows. "fake" is for the lab: it records what it would play.
+name = "native"

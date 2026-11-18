@@ -3,7 +3,12 @@ name = "feris-voice"
 version = "0.0.0"
 description = "The voice service of Feris-Teach: it speaks the teacher's spoken version aloud."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "piper-tts>=1.8,<2",
+]
+
+[project.scripts]
+feris-voice = "feris_voice:main"
 
 [build-system]
 requires = ["uv_build>=0.13.8,<0.14"]

@@ -21,6 +21,9 @@ test("git ignores everything in the student folder", () => {
 		"student/books/linear-algebra/lessons/01-vectors.html",
 		"student/lab/example-human.jsonl",
 		"student/run/classroom.json",
+		"student/run/voice.json",
+		"student/voice.toml",
+		"student/voices/es_ES-davefx-medium.onnx",
 		"student/sources/a-book.pdf",
 	];
 

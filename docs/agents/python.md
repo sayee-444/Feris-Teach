@@ -14,7 +14,7 @@ Every Python command goes through [uv](https://docs.astral.sh/uv/). System `pip`
 npm run check:python
 ```
 
-It runs `ruff check`, `ruff format --check` and `basedpyright` over `voice/`. `npm run format` applies the formatting. `pyrightconfig.json` at the root sets the `recommended` level for both the editor and the CLI; `ruff.toml` holds the lint rules.
+It installs the voice service into `voice/.venv` with `uv sync`, where `pyrightconfig.json` points basedpyright, then runs `ruff check`, `ruff format --check` and `basedpyright` over `voice/`. `npm run format` applies the formatting. `pyrightconfig.json` at the root sets the `recommended` level for both the editor and the CLI; `ruff.toml` holds the lint rules.
 
 Keep the basedpyright version in `package.json` equal to the human's editor extension, so the CLI reports what the human sees in the **Problems** panel.
 
@@ -28,13 +28,15 @@ The voice service is one **part** (ADR-0003). Its whole public interface is `voi
 - **Imports are absolute**: `from feris_voice._engine import Engine`. `TID252` fails a relative one.
 - **Name a module after what it holds** (`messages.py`, `_report.py`). A module named `types.py` shadows the standard library whenever something runs from inside its folder, so the name is never used.
 
+The speech engines are a self-registering set (ADR-0003): each is a folder in `voice/src/feris_voice/engines/` holding an `engine.py` with a `load(settings, voices)` function, found by the folder's name at run time and checked for its shape when loaded. An engine matches the `Engine` protocol by shape, without importing it: from `feris_voice` it imports only `Audio`, the sound it returns, and `VoiceError`, the problem it reports. The engine's file is `engine.py`, never the folder's `__init__.py`, so that an engine named after its library (`piper`) does not shadow that library for the type checker.
+
 `voice/pyproject.toml` declares a `[build-system]`, so `uv sync` and `uv run` inside `voice/` install `feris_voice` into the environment. `voice/uv.lock` is committed: when `uv` changes it, commit the change with the work that caused it.
 
 ## Typing conventions
 
 | For                                            | Use                                                                                          |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| What is swappable (a voice engine)             | `Protocol`. An implementation matches by shape and imports nothing from the service          |
+| What is swappable (a voice engine)             | `Protocol`. An implementation matches by shape and does not import the protocol              |
 | Data                                           | `@dataclass(frozen=True, slots=True)`                                                        |
 | Identifiers that must not be mixed up          | `NewType`                                                                                    |
 | Aliases                                        | The `type` statement. An alias made this way cannot be the second argument of `isinstance()` |

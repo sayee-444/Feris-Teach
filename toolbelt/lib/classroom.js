@@ -10,18 +10,11 @@
  * prints it as JSON: one fast call for the teacher.
  */
 import { spawn } from "node:child_process";
-import {
-	closeSync,
-	existsSync,
-	mkdirSync,
-	openSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ClassroomRefusal, classroomState, openPage, pointAt, startClassroom } from "#classroom";
 import { booksDirs, ferisBin, studentBooksDir, studentDir } from "./paths.js";
+import { endProcess, liveRecord } from "./service.js";
 
 const USAGE = `Usage: feris classroom <command> [options]
 
@@ -61,38 +54,17 @@ const runDir = () => join(studentDir(), "run");
 const stateFile = () => join(runDir(), "classroom.json");
 const logFile = () => join(runDir(), "classroom.log");
 
-/** Whether a process with this id is running. */
-function isRunning(/** @type {number} */ pid) {
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch (error) {
-		return /** @type {NodeJS.ErrnoException} */ (error).code === "EPERM";
-	}
-}
-
-/** The classroom that is running, if any. A record left by a classroom that died is removed. */
-function running() {
-	if (!existsSync(stateFile())) return undefined;
-	/** @type {Running | undefined} */
-	let state;
-	try {
-		state = JSON.parse(readFileSync(stateFile(), "utf8"));
-	} catch {
-		state = undefined;
-	}
-	if (state !== undefined && Number.isInteger(state.pid) && isRunning(state.pid)) return state;
-	rmSync(stateFile(), { force: true });
-	return undefined;
-}
+/**
+ * The classroom that is running, if any. A record left by a classroom that died is removed.
+ *
+ * @returns {Running | undefined}
+ */
+const running = () => liveRecord(stateFile());
 
 /** The line that says where the classroom is open. */
 function openLine(/** @type {Running} */ { url, pid }) {
 	return `The classroom is open at ${url} (process ${pid}).`;
 }
-
-/** Waits a little. */
-const pause = (/** @type {number} */ ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Reads `--port <port>` from the options.
@@ -200,13 +172,7 @@ async function stop() {
 		console.log("The classroom is not running.");
 		return 0;
 	}
-	process.kill(open.pid, "SIGTERM");
-	const deadline = Date.now() + STOP_TIMEOUT;
-	while (isRunning(open.pid) && Date.now() < deadline) await pause(50);
-	if (isRunning(open.pid)) {
-		process.kill(open.pid, "SIGKILL");
-		while (isRunning(open.pid)) await pause(50);
-	}
+	await endProcess(open.pid, STOP_TIMEOUT);
 	rmSync(stateFile(), { force: true });
 	console.log("The classroom has stopped.");
 	return 0;

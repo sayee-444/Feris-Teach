@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { book } from "../lib/book.js";
 import { classroom } from "../lib/classroom.js";
 import { lab } from "../lib/lab.js";
+import { voice } from "../lib/voice.js";
 
 const USAGE = `Usage: feris <command> [options]
 
@@ -13,6 +14,8 @@ Commands:
   classroom   Start and stop the classroom, and read what the student sees ("feris classroom"
               lists its commands)
   lab         Try one part of Feris-Teach in isolation ("feris lab" lists its commands)
+  voice       Speak the teacher's replies aloud and silence them ("feris voice" lists its
+              commands)
 
 Options:
   --version   Print the toolbelt's version
@@ -34,6 +37,8 @@ if (command === "--version") {
 	process.exitCode = await classroom(rest);
 } else if (command === "lab") {
 	process.exitCode = await lab(rest);
+} else if (command === "voice") {
+	process.exitCode = await voice(rest);
 } else if (command === undefined) {
 	process.stderr.write(USAGE);
 	process.exitCode = 1;
