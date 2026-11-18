@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         node: [22, 24]
     steps:
       - uses: actions/checkout@v7
@@ -28,5 +28,4 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run check
       - run: npm test
-      # Run with node directly: PowerShell on the Windows runners can swallow the "--" of npm run.
       - run: node toolbelt/bin/feris.js lab run --automatic

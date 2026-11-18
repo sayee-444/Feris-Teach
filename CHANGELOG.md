@@ -24,4 +24,8 @@ All notable changes to Feris-Teach are recorded here. The format follows [Keep a
 - The voice service: `feris voice start` starts it with the speech engine loaded and `feris voice shutdown` ends it, leaving no process behind. `feris voice say` speaks only the spoken version of a reply, which the teacher marks between `<spoken>` and `</spoken>`, never its code, tables or links' addresses; `feris voice stop` silences it at once and reports the last sentence heard and the sentences not heard; `feris voice off` and `feris voice on` turn it off and on. The first engine is Piper with a Spanish voice, played natively on Linux and Windows, and a missing engine or voice gives a message that says how to install it. The README says how to set it up.
 - Parts with a narrow interface (ADR-0003): each part has one entry file, other parts import the toolbelt as `#toolbelt`, and the checks fail when an import reaches inside another part. `docs/agents/javascript.md` and `docs/agents/python.md` hold the conventions.
 
+### Changed
+
+- Feris-Teach is built for its owner alone, on Linux (ADR-0005): the docs speak only to the owner and their agents, and the checks run only on Linux.
+
 [Unreleased]: https://github.com/sayee-444/Feris-Teach/commits/main
