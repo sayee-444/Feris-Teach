@@ -9,9 +9,10 @@ You need [Node.js](https://nodejs.org/) 22 or later and [uv](https://docs.astral
 ```bash
 npm install
 npx playwright install chromium
+uv sync --project voice
 ```
 
-The second line downloads the headless Chromium that the classroom's lab scenarios look at pages with.
+The second line downloads the headless Chromium that the classroom's lab scenarios look at pages with; the third installs the voice service and its engine into `voice/.venv`, where the type checker finds them. The tests and the lab's scenarios use the lab's fake voice, so they need no voice downloaded.
 
 ## Checks
 

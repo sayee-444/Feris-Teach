@@ -54,6 +54,15 @@ export function booksDirs() {
 }
 
 /**
+ * The voice service's Python project, run with uv.
+ *
+ * @package
+ */
+export function voiceDir() {
+	return inRepo("voice");
+}
+
+/**
  * The toolbelt's command, run with Node as a separate process.
  *
  * @package

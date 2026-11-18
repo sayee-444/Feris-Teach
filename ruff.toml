@@ -12,6 +12,15 @@ ban-relative-imports = "all"
 #
 #   "feris_voice._engine".msg = "Private to the voice service. Import from feris_voice."
 [lint.flake8-tidy-imports.banned-api]
+"feris_voice._audio".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice._cli".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice._config".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice._engines".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice._players".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice._server".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice._speaker".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice._spoken".msg = "Private to the voice service. Import from feris_voice."
+"feris_voice.engines".msg = "The voice service finds its engines by name at run time (ADR-0003)."
 
 [lint.per-file-ignores]
 # Inside a part, its own private modules are its to import.

@@ -1,5 +1,7 @@
 {
   "typeCheckingMode": "recommended",
   "include": ["voice"],
+  "venvPath": "voice",
+  "venv": ".venv",
   "executionEnvironments": [{ "root": "voice/src" }]
 }

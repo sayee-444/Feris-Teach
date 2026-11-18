@@ -17,7 +17,7 @@
     "test": "node --test",
     "check": "npm run check:node && npm run check:python",
     "check:node": "biome check && tsc -p .",
-    "check:python": "uvx ruff@0.17.5 check voice && uvx ruff@0.17.5 format --check voice && uvx basedpyright@1.40.2 voice",
+    "check:python": "uv sync --project voice --quiet && uvx ruff@0.17.5 check voice && uvx ruff@0.17.5 format --check voice && uvx basedpyright@1.40.2 voice",
     "format": "biome check --write && uvx ruff@0.17.5 check --fix voice && uvx ruff@0.17.5 format voice"
   },
   "devDependencies": {
