@@ -11,4 +11,4 @@ The teacher is a Claude Code session in the terminal. The preparer and the advis
 ## Consequences
 
 - The classroom is a separate browser (Playwright), not the student's personal browser.
-- One student per machine for now: no accounts, hosting or per-student cost.
+- One student, the owner: no accounts, hosting or per-student cost.

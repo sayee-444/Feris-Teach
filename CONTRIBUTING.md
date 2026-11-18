@@ -1,6 +1,6 @@
-# Contributing to Feris-Teach
+# How Feris-Teach is built
 
-The repo is in English: docs, code, issues, commit messages and pull requests. Use the words of the [glossary](GLOSSARY.md) for the product's concepts, and read the [decision records](docs/adr/) before changing the area they cover.
+Feris-Teach is built for its owner alone ([ADR-0005](docs/adr/0005-built-for-its-owner-alone.md)); this file holds the conventions every agent building it follows. The repo is in English: docs, code, issues, commit messages and pull requests. Use the words of the [glossary](GLOSSARY.md) for the product's concepts, and read the [decision records](docs/adr/) before changing the area they cover.
 
 ## Setting up
 
@@ -80,7 +80,7 @@ The types in use are `feat`, `fix`, `docs`, `refactor`, `test`, `chore` and `ci`
 
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The first release is `0.1.0`; fixes to it bump the patch number.
 
-Every pull request that changes what a student or a contributor sees adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), which follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Every pull request that changes what the student sees adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), which follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 A release is:
 
@@ -90,4 +90,4 @@ A release is:
 
 ## Nothing personal in the repo
 
-Everything that belongs to a student lives in the git-ignored `student/` folder ([ADR-0002](docs/adr/0002-one-private-student-folder.md)). Never commit a profile, a student's book, a source or any third-party material. The only book the repo will ever hold is the sample book, `books/basic-algebra/`, written for this repo. A book made from a student's own material, such as a textbook they own, lives in `student/books/`.
+Everything that belongs to the student lives in the git-ignored `student/` folder ([ADR-0002](docs/adr/0002-one-private-student-folder.md)): the profile, the student's books, sources, voices and recipes. The repo's only book is the sample book, `books/basic-algebra/`, written for this repo; the student's books live in `student/books/`.
