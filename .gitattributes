@@ -1,2 +1,2 @@
-# One line-ending style, so the format check never trips on line endings.
+# One line-ending style on every system, so the format check agrees on Linux and Windows.
 * text=auto eol=lf

@@ -5,7 +5,7 @@ A teaching agent built for its owner alone: it teaches any subject by talking wi
 ## People and agents
 
 **Student**:
-The person who learns: the owner of Feris-Teach, on their own machine.
+The person who learns: the owner of Feris-Teach.
 _Avoid_: User, learner
 
 **Profile**:

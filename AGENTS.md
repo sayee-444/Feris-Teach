@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Feris-Teach is a **teaching agent** built on Claude Code for one person, its owner, on their own Linux machine (ADR-0005). The **teacher**, speaking as the **persona** Feris, gives a **class** to the **student** in short spoken turns, while a local web **classroom** shows the **book** being studied. `GLOSSARY.md` defines these terms, and `docs/adr/` holds the decisions behind the architecture. Use the glossary's words and flag any conflict with an ADR.
+Feris-Teach is a **teaching agent** built on Claude Code for one person, its owner (ADR-0005). The **teacher**, speaking as the **persona** Feris, gives a **class** to the **student** in short spoken turns, while a local web **classroom** shows the **book** being studied. `GLOSSARY.md` defines these terms, and `docs/adr/` holds the decisions behind the architecture. Use the glossary's words and flag any conflict with an ADR.
 
 The first release (`0.1.0`) is under construction: its spec is issue #1, and each part lands as its own ticket. A part named below as "planned" does not exist yet.
 
@@ -35,7 +35,7 @@ Feris-Teach is split into **parts**, one folder each at the root, and each part'
 
 ## Done means checked
 
-Run `npm run check` (lint, formatting and types for Node and Python), `npm test` and `npm run feris -- lab run --automatic` (every automatic scenario) before you call a change done. The classroom's scenarios run a headless Chromium: install it once with `npx playwright install chromium`. Linux is the only system Feris-Teach runs on.
+Run `npm run check` (lint, formatting and types for Node and Python), `npm test` and `npm run feris -- lab run --automatic` (every automatic scenario) before you call a change done. The classroom's scenarios run a headless Chromium: install it once with `npx playwright install chromium`. All must pass on Linux and Windows, so use `node:path` and `node:url` for paths, and keep shell-specific syntax out of the npm scripts. A fresh clone on a clean machine must start a class by following the README.
 
 ## Personal instructions
 

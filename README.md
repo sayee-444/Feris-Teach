@@ -1,6 +1,6 @@
 # Feris-Teach
 
-A teaching agent for [Claude Code](https://claude.com/claude-code), built for one person: its owner, on their own Linux machine ([ADR-0005](docs/adr/0005-built-for-its-owner-alone-on-linux.md)). The **teacher**, speaking as the persona **Feris**, teaches any subject by talking with you in short turns, in text or voice, while a local web **classroom** shows the **book** you are studying. The teacher knows what is on your screen and can point at it.
+A teaching agent for [Claude Code](https://claude.com/claude-code), built for one person: its owner ([ADR-0005](docs/adr/0005-built-for-its-owner-alone.md)). The **teacher**, speaking as the persona **Feris**, teaches any subject by talking with you in short turns, in text or voice, while a local web **classroom** shows the **book** you are studying. The teacher knows what is on your screen and can point at it.
 
 > **Status: under construction.** The first release, `0.1.0` ("a talking class with Feris"), is being built ticket by ticket. What exists today is the teacher's toolbelt, the lab, the classroom serving a sample book, and the voice service. Starting a class does not work yet. The plan is in the [spec](https://github.com/sayee-444/Feris-Teach/issues/1), and progress is in the [changelog](CHANGELOG.md).
 
@@ -18,12 +18,14 @@ Teacher, persona, classroom, book and the other words of the product are defined
 
 - [Node.js](https://nodejs.org/) 22 or later
 - [uv](https://docs.astral.sh/uv/), which runs the Python tools
-- Linux
+- Linux or Windows
 - An NVIDIA GPU for the voice; the minimum is stated here once the Qwen engine lands (#9)
 
 ## Getting started
 
 ```bash
+git clone https://github.com/sayee-444/Feris-Teach.git
+cd Feris-Teach
 npm install
 npm run feris -- classroom start
 ```
@@ -52,7 +54,7 @@ Feris's replies are spoken aloud by a local voice: the **voice service**, which 
 
 `voice stop` silences the voice at once and prints the last sentence heard and the sentences not heard; `voice off` and `voice on` turn the voice off and on. If the engine or the voice is missing, `voice start` says what is missing and how to install it.
 
-The sound goes out through PipeWire (`pw-play`), PulseAudio (`paplay`) or ALSA (`aplay`), whichever is installed. To use another voice or other settings, write a `student/voice.toml` with the keys of [`defaults.toml`](voice/src/feris_voice/defaults.toml) you want to change, for example:
+On Linux the sound goes out through PipeWire (`pw-play`), PulseAudio (`paplay`) or ALSA (`aplay`), whichever is installed; on Windows, through Windows' own player. To use another voice or other settings, write a `student/voice.toml` with the keys of [`defaults.toml`](voice/src/feris_voice/defaults.toml) you want to change, for example:
 
 ```toml
 [engine]

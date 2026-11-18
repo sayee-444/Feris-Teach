@@ -1,10 +1,10 @@
 # How Feris-Teach is built
 
-Feris-Teach is built for its owner alone, on Linux ([ADR-0005](docs/adr/0005-built-for-its-owner-alone-on-linux.md)); this file holds the conventions every agent building it follows. The repo is in English: docs, code, issues, commit messages and pull requests. Use the words of the [glossary](GLOSSARY.md) for the product's concepts, and read the [decision records](docs/adr/) before changing the area they cover.
+Feris-Teach is built for its owner alone ([ADR-0005](docs/adr/0005-built-for-its-owner-alone.md)); this file holds the conventions every agent building it follows. The repo is in English: docs, code, issues, commit messages and pull requests. Use the words of the [glossary](GLOSSARY.md) for the product's concepts, and read the [decision records](docs/adr/) before changing the area they cover.
 
 ## Setting up
 
-You need Linux, [Node.js](https://nodejs.org/) 22 or later and [uv](https://docs.astral.sh/uv/).
+You need [Node.js](https://nodejs.org/) 22 or later and [uv](https://docs.astral.sh/uv/). Linux and Windows are both supported, and every change must work on both.
 
 ```bash
 npm install
@@ -23,7 +23,7 @@ The second line downloads the headless Chromium that the classroom's lab scenari
 | `npm run format`                       | Applies the formatting and the safe lint fixes                    |
 | `npm run feris -- lab run --automatic` | Runs every automatic scenario of the lab                          |
 
-The Node code is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler. The Python code is checked by Ruff and basedpyright. GitHub Actions runs `npm run check`, `npm test` and the lab's automatic scenarios on every pull request, on Linux.
+The Node code is plain JavaScript with JSDoc types, checked by Biome and the TypeScript compiler. The Python code is checked by Ruff and basedpyright. GitHub Actions runs `npm run check`, `npm test` and the lab's automatic scenarios on every pull request, on Linux and Windows.
 
 The code is split into parts, each with one entry file, and the checks fail when an import reaches inside another part ([ADR-0003](docs/adr/0003-one-folder-per-part-with-a-narrow-interface.md)). The conventions are in [docs/agents/javascript.md](docs/agents/javascript.md) and [docs/agents/python.md](docs/agents/python.md).
 

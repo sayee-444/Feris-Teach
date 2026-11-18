@@ -26,6 +26,6 @@ All notable changes to Feris-Teach are recorded here. The format follows [Keep a
 
 ### Changed
 
-- Feris-Teach is built for its owner alone, on Linux (ADR-0005): the docs speak only to the owner and their agents, and the checks run only on Linux.
+- Feris-Teach is built for its owner alone (ADR-0005): the docs speak only to the owner and their agents, and its voice runs on an NVIDIA GPU.
 
 [Unreleased]: https://github.com/sayee-444/Feris-Teach/commits/main
