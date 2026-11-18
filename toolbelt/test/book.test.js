@@ -231,10 +231,48 @@ test("a new book never takes the name of a book that exists, the student's or th
 test("a new book's name must be a folder name that works on every system", (t) => {
 	const { dir, env } = emptyStudent(t);
 
-	const results = ["Linear Algebra", "../outside", "álgebra", "a--b"].map(
-		(name) => feris(["book", "new", name], env).status,
-	);
+	const refusals = ["Linear Algebra", "../outside", "álgebra", "a--b"].map((name) => {
+		const { status, stderr } = feris(["book", "new", name], env);
+		return { status, stderr };
+	});
 
-	assert.deepEqual(results, [1, 1, 1, 1]);
+	assert.deepEqual(
+		refusals,
+		["Linear Algebra", "../outside", "álgebra", "a--b"].map((name) => ({
+			status: 1,
+			stderr: `feris: "${name}" is not a book name. Use lowercase letters, digits and hyphens, as in "linear-algebra".\n`,
+		})),
+	);
 	assert.equal(existsSync(join(dir, "student")), false, "something was written");
+});
+
+test("a new book's language must be a language tag, and its title must not be empty", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	const language = feris(["book", "new", "vectors", "--language", "Spanish please"], env);
+	const title = feris(["book", "new", "vectors", "--title", "  "], env);
+	const option = feris(["book", "new", "vectors", "--colour", "red"], env);
+
+	assert.deepEqual(
+		[language.status, language.stderr],
+		[1, 'feris: "Spanish please" is not a language tag. Use one such as "en" or "es".\n'],
+	);
+	assert.deepEqual([title.status, title.stderr], [1, "feris: the book's title is empty.\n"]);
+	assert.equal(option.status, 1);
+	assert.match(option.stderr, /^feris: Unknown option '--colour'/);
+	assert.equal(existsSync(join(dir, "student")), false, "something was written");
+});
+
+test("a new book in Spanish gets its glossary in Spanish", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	feris(["book", "new", "algebra-lineal", "--title", "Álgebra lineal", "--language", "es"], env);
+
+	const glossary = readFileSync(
+		join(dir, "student", "books", "algebra-lineal", "glossary.html"),
+		"utf8",
+	);
+	assert.match(glossary, /<html lang="es">/);
+	assert.match(glossary, /<title>Glosario<\/title>/);
+	assert.match(glossary, /<div class="series">Álgebra lineal<\/div>/);
 });

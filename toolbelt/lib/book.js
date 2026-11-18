@@ -71,11 +71,21 @@ const LANGUAGE = /^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/;
 
 /** Creates an empty book in the student folder, and never writes over one that exists. */
 function create(/** @type {string[]} */ args) {
-	const { values, positionals } = parseArgs({
-		args,
-		allowPositionals: true,
-		options: { title: { type: "string" }, language: { type: "string" } },
-	});
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args,
+			allowPositionals: true,
+			options: { title: { type: "string" }, language: { type: "string" } },
+		});
+	} catch (error) {
+		// An option it does not know, or one left without its value.
+		if (!(error instanceof TypeError && "code" in error)) throw error;
+		if (!String(error.code).startsWith("ERR_PARSE_ARGS")) throw error;
+		console.error(`feris: ${error.message}`);
+		return 1;
+	}
+	const { values, positionals } = parsed;
 	const [name, ...extra] = positionals;
 	if (name === undefined || extra.length > 0) return usage();
 	const title = (values.title ?? name).trim();
@@ -121,15 +131,6 @@ function usage() {
 export function book(args) {
 	const [command, target, ...extra] = args;
 	if (command === "check" && target !== undefined && extra.length === 0) return check(target);
-	if (command === "new") {
-		try {
-			return create(args.slice(1));
-		} catch (error) {
-			// parseArgs throws on an option it does not know or one left without its value.
-			if (!(error instanceof TypeError)) throw error;
-			console.error(`feris: ${error.message}`);
-			return 1;
-		}
-	}
+	if (command === "new") return create(args.slice(1));
 	return usage();
 }
