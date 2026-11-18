@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -175,4 +175,66 @@ test("a book in the student folder is checked by its name", (t) => {
 
 	assert.equal(status, 0);
 	assert.equal(stdout, "my-algebra matches its index: 2 chapters, 5 lessons.\n");
+});
+
+/**
+ * An empty student folder of its own for one test.
+ *
+ * @param {import("node:test").TestContext} t
+ */
+function emptyStudent(t) {
+	const dir = mkdtempSync(join(tmpdir(), "feris-student-"));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	return { dir, env: { FERIS_STUDENT_DIR: join(dir, "student") } };
+}
+
+test("a new book is created empty in the student folder, and matches its index", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	const created = feris(["book", "new", "linear-algebra", "--title", "Linear algebra"], env);
+	const checked = feris(["book", "check", "linear-algebra"], env);
+
+	assert.equal(created.stderr, "");
+	assert.equal(created.status, 0);
+	const folder = join(dir, "student", "books", "linear-algebra");
+	assert.equal(created.stdout, `Created the book linear-algebra in ${folder}.\n`);
+	assert.deepEqual(JSON.parse(readFileSync(join(folder, "index.json"), "utf8")), {
+		title: "Linear algebra",
+		language: "en",
+		chapters: [],
+		glossary: "glossary.html",
+		reference: [],
+	});
+	assert.equal(checked.stderr, "");
+	assert.equal(checked.stdout, "linear-algebra matches its index: 0 chapters, 0 lessons.\n");
+});
+
+test("a new book never takes the name of a book that exists, the student's or the repo's", (t) => {
+	const { dir, env } = emptyStudent(t);
+	feris(["book", "new", "linear-algebra", "--title", "Linear algebra"], env);
+	const index = join(dir, "student", "books", "linear-algebra", "index.json");
+	const before = readFileSync(index, "utf8");
+
+	const again = feris(["book", "new", "linear-algebra", "--title", "Something else"], env);
+	const sample = feris(["book", "new", "basic-algebra"], env);
+
+	assert.equal(again.status, 1);
+	assert.equal(
+		again.stderr,
+		`feris: there is already a book named "linear-algebra", in ${join(dir, "student", "books", "linear-algebra")}.\n`,
+	);
+	assert.equal(readFileSync(index, "utf8"), before);
+	assert.equal(sample.status, 1);
+	assert.match(sample.stderr, /^feris: there is already a book named "basic-algebra", in /);
+});
+
+test("a new book's name must be a folder name that works on every system", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	const results = ["Linear Algebra", "../outside", "álgebra", "a--b"].map(
+		(name) => feris(["book", "new", name], env).status,
+	);
+
+	assert.deepEqual(results, [1, 1, 1, 1]);
+	assert.equal(existsSync(join(dir, "student")), false, "something was written");
 });

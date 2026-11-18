@@ -2,8 +2,9 @@
  * Books on disk: reading a book's index and checking it against the files the book holds, and
  * checking that each lesson names its sections and paragraphs, which the view and pointing go by.
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, posix } from "node:path";
+import { escapeHtml, wordsFor } from "./pages.js";
 
 /** @import { BookCheck, BookIndex } from "../types.js" */
 
@@ -233,4 +234,47 @@ export function checkBook(dir) {
 			mismatches.push(`${file}: the page is in the book, but not in the index`);
 	}
 	return { index, mismatches };
+}
+
+/**
+ * Writes a new, empty book into a folder that does not exist yet: an index with no chapters and
+ * no reference, and a glossary page with no words, both in the book's language. The book matches
+ * its index from the start.
+ *
+ * @param {string} dir The book's folder, which this creates
+ * @param {{ title: string, language: string }} book
+ * @returns {BookIndex} The book's index
+ */
+export function newBook(dir, { title, language }) {
+	/** @type {BookIndex} */
+	const index = { title, language, chapters: [], glossary: "glossary.html", reference: [] };
+	const { glossary } = wordsFor(language);
+	mkdirSync(dir, { recursive: false });
+	writeFileSync(join(dir, "index.json"), `${JSON.stringify(index, null, "\t")}\n`);
+	writeFileSync(
+		join(dir, index.glossary),
+		`<!doctype html>
+<html lang="${escapeHtml(language)}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${glossary}</title>
+</head>
+<body>
+<main>
+
+<header class="lesson">
+  <div class="series">${escapeHtml(title)}</div>
+  <h1>${glossary}</h1>
+</header>
+
+<dl class="glossary">
+</dl>
+
+</main>
+</body>
+</html>
+`,
+	);
+	return index;
 }

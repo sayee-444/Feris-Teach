@@ -8,7 +8,7 @@
  * The teacher opens its pages and points at what is on them.
  */
 
-export { checkBook } from "./lib/book.js";
+export { checkBook, newBook } from "./lib/book.js";
 export { ClassroomRefusal, openPage, pointAt } from "./lib/orders.js";
 export { startClassroom } from "./lib/server.js";
 export { classroomState } from "./lib/state.js";

@@ -32,8 +32,12 @@ const WORDS = {
 	},
 };
 
-/** The words for a book's language. */
-function wordsFor(/** @type {string} */ language) {
+/**
+ * The words for a book's language.
+ *
+ * @package
+ */
+export function wordsFor(/** @type {string} */ language) {
 	const base = /** @type {keyof typeof WORDS} */ (language.toLowerCase().split("-")[0]);
 	return WORDS[base] ?? WORDS.en;
 }
