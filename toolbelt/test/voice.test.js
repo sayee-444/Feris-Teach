@@ -13,14 +13,15 @@ const bin = fileURLToPath(new URL("../bin/feris.js", import.meta.url));
  * voice service is shut down when the test ends, whatever happened.
  *
  * @param {import("node:test").TestContext} t
+ * @param {Record<string, string>} [env] Environment variables added to every run of the toolbelt
  */
-function student(t) {
+function student(t, env = {}) {
 	const dir = mkdtempSync(join(tmpdir(), "feris-student-"));
 	/** Runs the toolbelt the way the teacher does, with this student folder. */
 	const feris = (/** @type {string[]} */ ...args) => {
 		const result = spawnSync(process.execPath, [bin, ...args], {
 			encoding: "utf8",
-			env: { ...process.env, FERIS_STUDENT_DIR: dir },
+			env: { ...process.env, ...env, FERIS_STUDENT_DIR: dir },
 			timeout: 120_000,
 		});
 		return { status: result.status, stdout: result.stdout, stderr: result.stderr };
@@ -108,28 +109,44 @@ test("the voice service starts in the background and shuts down without a trace"
 	assert.equal(feris("voice", "shutdown").stdout, "The voice service is not running.\n");
 });
 
-test("a voice that is not installed stops the start with a message that says how to install it", (t) => {
-	const { feris, dir } = student(t);
-	fakeVoice(dir, '[engine]\nname = "piper"\nvoice = "es_ES-nobody-medium"\n');
+test("a Qwen voice without its model or a GPU stops the start with what is missing and how to fix it", (t) => {
+	// An empty Hugging Face cache holds no model, and CUDA sees no GPU.
+	const cache = mkdtempSync(join(tmpdir(), "feris-hf-"));
+	t.after(() => rmSync(cache, { recursive: true, force: true }));
+	const { feris, dir } = student(t, { HF_HOME: cache, CUDA_VISIBLE_DEVICES: "" });
+	fakeVoice(dir, '[engine]\nname = "qwen"\nvoice = "serena"\n');
 
 	const { status, stdout, stderr } = feris("voice", "start");
 
 	assert.equal(status, 1);
 	assert.equal(stdout, "");
 	assert.match(stderr, /^feris: the voice service did not start\.\n/);
-	assert.ok(
-		stderr.includes(
-			`the Piper voice "es_ES-nobody-medium" is not in ${join(dir, "voices")}. Download it`,
-		),
-		stderr,
-	);
-	assert.ok(
-		stderr.includes(
-			`python -m piper.download_voices --data-dir ${join(dir, "voices")} es_ES-nobody-medium`,
-		),
-		stderr,
-	);
+	for (const part of [
+		"the Qwen model Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice is not downloaded",
+		"uv run --project voice hf download Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+		"there is no NVIDIA GPU that CUDA can use",
+		"an NVIDIA RTX 30 series or newer with 8 GB of VRAM",
+	]) {
+		assert.ok(stderr.includes(part), `"${part}" is not in: ${stderr}`);
+	}
 	assert.equal(feris("voice", "status").status, 1, "a voice service runs without its voice");
+});
+
+test("a Qwen voice that is neither a stock speaker nor in the voices folder stops the start", (t) => {
+	const { feris, dir } = student(t);
+	fakeVoice(dir, '[engine]\nname = "qwen"\nvoice = "nadie"\n');
+
+	const { status, stderr } = feris("voice", "start");
+
+	assert.equal(status, 1);
+	assert.ok(
+		stderr.includes(
+			'there is no Qwen voice "nadie": it is not one of CustomVoice\'s speakers (aiden, ' +
+				"dylan, eric, ono_anna, ryan, serena, sohee, uncle_fu, vivian), nor a voice in " +
+				join(dir, "voices"),
+		),
+		stderr,
+	);
 });
 
 test("an engine that does not exist stops the start with a message that names the engines", (t) => {
@@ -140,7 +157,7 @@ test("an engine that does not exist stops the start with a message that names th
 
 	assert.equal(status, 1);
 	assert.ok(
-		stderr.includes('there is no voice engine "espeak". The engines are: fake, piper.'),
+		stderr.includes('there is no voice engine "espeak". The engines are: fake, qwen.'),
 		stderr,
 	);
 });
@@ -187,6 +204,32 @@ test("the reply to speak can come on standard input, as a hook sends it", async 
 			: [];
 	}
 	assert.deepEqual(heard, ["Lo que se oye.", "Y su pregunta, ¿vale?"]);
+});
+
+test("a sentence starts to sound before it is all made", async (t) => {
+	const { feris, dir } = student(t);
+	const record = join(dir, "played.jsonl");
+	// Each sentence is made in four pieces of a second each, and lasts five seconds.
+	writeFileSync(
+		join(dir, "voice.toml"),
+		'[engine]\nname = "fake"\nseconds = 5\npieces = 4\nmaking = 1\n\n' +
+			`[player]\nname = "fake"\nrecord = '${record}'\n`,
+	);
+	assert.equal(feris("voice", "start").status, 0);
+
+	const said = Date.now();
+	assert.equal(feris("voice", "say", "<spoken>Uno. Dos.</spoken>").status, 0);
+	/** @type {{ speaking: string | null, queued: string[] }} */
+	let status = { speaking: null, queued: [] };
+	while (status.speaking === null && Date.now() - said < 10_000) {
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		status = JSON.parse(feris("voice", "status").stdout);
+	}
+	const heard = Date.now() - said;
+
+	assert.equal(status.speaking, "Uno.");
+	assert.deepEqual(status.queued, ["Dos."]);
+	assert.ok(heard < 3_000, `the first sentence sounded only after ${heard} ms, once all made`);
 });
 
 test("the voice's commands take what they need and nothing more", (t) => {
