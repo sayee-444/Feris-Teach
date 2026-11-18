@@ -4,11 +4,15 @@
 
 [engine]
 # One of the engines in `voice/src/feris_voice/engines/`.
-name = "piper"
-# A Piper voice, downloaded into `student/voices/` (see the README).
-voice = "es_ES-davefx-medium"
-# Optional Piper settings: length_scale (above 1 is slower), noise_scale, noise_w_scale, volume,
-# speaker (for a voice with several speakers).
+name = "qwen"
+# A stock voice of Qwen3-TTS CustomVoice (aiden, dylan, eric, ono_anna, ryan, serena, sohee,
+# uncle_fu, vivian), whose model is downloaded into the Hugging Face cache (see the README); or
+# the name of a voice in `student/voices/`, such as one trained in the studio.
+voice = "serena"
+# For a voice in `student/voices/` whose model has several speakers: which one speaks.
+# speaker = "<speaker>"
+# The language spoken.
+language = "spanish"
 
 [player]
 # "native" plays through the machine's own sound: PipeWire, PulseAudio or ALSA on Linux,

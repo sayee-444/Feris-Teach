@@ -1,9 +1,10 @@
 """The players: `native` plays through the machine's own sound, `fake` records what it would play.
 
-The native player needs nothing installed beyond the system: on Windows it uses the standard
-library's `winsound`, elsewhere the first command-line player it finds (PipeWire's `pw-play`,
-PulseAudio's `paplay`, ALSA's `aplay`, or `afplay` on macOS). Each sentence is written to a
-temporary WAV file and played; stopping ends the playing at once.
+The native player needs nothing installed beyond the system. On Linux it uses the first
+command-line player it finds, PipeWire's `pw-play`, PulseAudio's `paplay` or ALSA's `aplay`, and
+streams each sentence into it as it is made. On Windows it uses the standard library's
+`winsound`, which plays only whole files: each sentence is written to a temporary WAV file once
+it is all made, and played. Stopping ends the playing at once.
 """
 
 import contextlib
@@ -13,45 +14,76 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import wave
+from collections.abc import Callable
 from pathlib import Path
-from typing import final
+from typing import IO, final
 
-from feris_voice._audio import Audio, Playback, Player
+from feris_voice._audio import Playback, Player, Sound
 from feris_voice._config import Settings, VoiceError
 
-_COMMANDS = (["pw-play"], ["paplay"], ["aplay", "-q"], ["afplay"])
-"""The command-line players, in the order they are tried, each with its options."""
+
+def _pw_play(path: str, rate: int) -> list[str]:
+    return [path, "--raw", "--format", "s16", "--channels", "1", "--rate", str(rate), "-"]
 
 
-def _wav(audio: Audio) -> Path:
-    """The sound written to a temporary WAV file, which whoever plays it deletes."""
-    with tempfile.NamedTemporaryFile(prefix="feris-voice-", suffix=".wav", delete=False) as file:
-        with wave.open(file, "wb") as out:
-            out.setnchannels(1)
-            out.setsampwidth(2)
-            out.setframerate(audio.rate)
-            out.writeframes(audio.samples)
-        return Path(file.name)
+def _paplay(path: str, rate: int) -> list[str]:
+    return [path, "--raw", "--format=s16le", "--channels=1", f"--rate={rate}"]
+
+
+def _aplay(path: str, rate: int) -> list[str]:
+    return [path, "-q", "-t", "raw", "-f", "S16_LE", "-c", "1", "-r", str(rate), "-"]
+
+
+type _Command = Callable[[str, int], list[str]]
+"""A command-line player's command line, from its path and the rate of the sound it reads on
+its standard input as signed 16-bit mono samples."""
+
+_COMMANDS: tuple[tuple[str, _Command], ...] = (
+    ("pw-play", _pw_play),
+    ("paplay", _paplay),
+    ("aplay", _aplay),
+)
+"""The command-line players, in the order they are tried."""
 
 
 @final
 class _ProcessPlayback:
-    """A sound played by a command-line player."""
+    """A sound streamed into a command-line player as it is made."""
 
-    def __init__(self, command: list[str], audio: Audio) -> None:
-        self._path = _wav(audio)
+    def __init__(self, command: list[str], sound: Sound) -> None:
         self._stopped = False
+        self._failed: Exception | None = None
         self._process = subprocess.Popen(
-            [*command, str(self._path)],
-            stdin=subprocess.DEVNULL,
+            command,
+            stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        stdin = self._process.stdin
+        assert stdin is not None
+        self._feeding = threading.Thread(
+            target=self._feed, args=(sound, stdin), name="play", daemon=True
+        )
+        self._feeding.start()
+
+    def _feed(self, sound: Sound, stdin: IO[bytes]) -> None:
+        try:
+            # A stopped player closes its end of the pipe.
+            with contextlib.suppress(OSError, ValueError), stdin:
+                for piece in sound.pieces():
+                    _ = stdin.write(piece)
+                    stdin.flush()
+        except Exception as error:
+            self._failed = error
+            self.stop()
 
     def wait(self) -> bool:
+        self._feeding.join()
         code = self._process.wait()
-        self._path.unlink(missing_ok=True)
+        if self._failed is not None:
+            raise self._failed
         return code == 0 and not self._stopped
 
     def stop(self) -> None:
@@ -62,57 +94,94 @@ class _ProcessPlayback:
 
 @final
 class _CommandPlayer:
-    def __init__(self, command: list[str]) -> None:
+    def __init__(self, path: str, command: _Command) -> None:
+        self._path = path
         self._command = command
 
-    def play(self, audio: Audio) -> Playback:
-        return _ProcessPlayback(self._command, audio)
+    def play(self, sound: Sound) -> Playback:
+        return _ProcessPlayback(self._command(self._path, sound.rate), sound)
 
 
 if sys.platform == "win32":
     import winsound
 
+    def _wav(rate: int, samples: bytes) -> Path:
+        """The sound written to a temporary WAV file, which whoever plays it deletes."""
+        with tempfile.NamedTemporaryFile(
+            prefix="feris-voice-", suffix=".wav", delete=False
+        ) as file:
+            with wave.open(file, "wb") as out:
+                out.setnchannels(1)
+                out.setsampwidth(2)
+                out.setframerate(rate)
+                out.writeframes(samples)
+            return Path(file.name)
+
     @final
     class _WindowsPlayback:
-        """A sound played by Windows' own player, which plays one sound at a time."""
+        """A sound played by Windows' own player, which plays one whole file at a time: it
+        starts once the sentence is all made."""
 
-        def __init__(self, audio: Audio) -> None:
-            self._path = _wav(audio)
-            self._seconds = audio.seconds
+        def __init__(self, sound: Sound) -> None:
             self._over = threading.Event()
             self._lock = threading.Lock()
-            winsound.PlaySound(
-                str(self._path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT
+            self._path: Path | None = None
+            self._seconds = 0.0
+            self._failed: Exception | None = None
+            self._starting = threading.Thread(
+                target=self._start, args=(sound,), name="play", daemon=True
             )
+            self._starting.start()
+
+        def _start(self, sound: Sound) -> None:
+            try:
+                samples = b"".join(sound.pieces())
+                with self._lock:
+                    if self._over.is_set() or samples == b"":
+                        return
+                    self._path = _wav(sound.rate, samples)
+                    self._seconds = len(samples) / 2 / sound.rate
+                    winsound.PlaySound(
+                        str(self._path),
+                        winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT,
+                    )
+            except Exception as error:
+                self._failed = error
 
         def wait(self) -> bool:
+            self._starting.join()
+            if self._failed is not None:
+                self.stop()
+                raise self._failed
             stopped = self._over.wait(self._seconds)
             with self._lock:
                 self._over.set()
             # Windows may still hold the file a moment after the sound ends.
-            with contextlib.suppress(OSError):
-                self._path.unlink(missing_ok=True)
+            if self._path is not None:
+                with contextlib.suppress(OSError):
+                    self._path.unlink(missing_ok=True)
             return not stopped
 
         def stop(self) -> None:
             with self._lock:
                 if not self._over.is_set():
-                    winsound.PlaySound(None, 0)
+                    if self._path is not None:
+                        winsound.PlaySound(None, 0)
                     self._over.set()
 
     @final
     class _WindowsPlayer:
-        def play(self, audio: Audio) -> Playback:
-            return _WindowsPlayback(audio)
+        def play(self, sound: Sound) -> Playback:
+            return _WindowsPlayback(sound)
 
 
 def _native() -> Player:
     if sys.platform == "win32":
         return _WindowsPlayer()
-    for command in _COMMANDS:
-        found = shutil.which(command[0])
+    for name, command in _COMMANDS:
+        found = shutil.which(name)
         if found is not None:
-            return _CommandPlayer([found, *command[1:]])
+            return _CommandPlayer(found, command)
     raise VoiceError(
         "there is no audio player on this machine. Install PipeWire (pw-play), PulseAudio "
         + "(paplay) or the ALSA utilities (aplay)."
@@ -121,15 +190,18 @@ def _native() -> Player:
 
 @final
 class _FakePlayback:
-    def __init__(self, record: Path, audio: Audio, hold: bool) -> None:
+    def __init__(self, record: Path, sound: Sound, hold: bool) -> None:
         self._record = record
-        self._audio = audio
+        self._sound = sound
         self._hold = hold
+        self._began = time.monotonic()
         self._stopped = threading.Event()
 
     def wait(self) -> bool:
-        cut = self._stopped.wait(None if self._hold else self._audio.seconds)
-        line = json.dumps({"sentence": self._audio.sentence, "cut": cut}, ensure_ascii=False)
+        seconds = sum(len(piece) for piece in self._sound.pieces()) / 2 / self._sound.rate
+        left = max(0.0, seconds - (time.monotonic() - self._began))
+        cut = self._stopped.wait(None if self._hold else left)
+        line = json.dumps({"sentence": self._sound.sentence, "cut": cut}, ensure_ascii=False)
         with self._record.open("a", encoding="utf-8") as file:
             _ = file.write(f"{line}\n")
         return not cut
@@ -150,9 +222,9 @@ class _FakePlayer:
         self._hold_on = hold_on
         self._played = 0
 
-    def play(self, audio: Audio) -> Playback:
+    def play(self, sound: Sound) -> Playback:
         self._played += 1
-        return _FakePlayback(self._record, audio, self._played == self._hold_on)
+        return _FakePlayback(self._record, sound, self._played == self._hold_on)
 
 
 def _fake(settings: Settings) -> Player:

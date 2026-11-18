@@ -4,7 +4,13 @@ version = "0.0.0"
 description = "The voice service of Feris-Teach: it speaks the teacher's spoken version aloud."
 requires-python = ">=3.12"
 dependencies = [
-    "piper-tts>=1.8,<2",
+    "faster-qwen3-tts>=0.5.4,<0.6",
+    "huggingface-hub>=1.5,<2",
+    "numpy>=2",
+    "torch>=2.11",
+    "torchaudio>=2.11",
+    # qwen-tts-hf cannot load the speech tokenizer with transformers 5.17 or later.
+    "transformers>=5.15.1,<5.17",
 ]
 
 [project.scripts]
@@ -13,3 +19,14 @@ feris-voice = "feris_voice:main"
 [build-system]
 requires = ["uv_build>=0.13.8,<0.14"]
 build-backend = "uv_build"
+
+# PyPI's torch runs on the CPU alone on Windows: both systems take PyTorch's CUDA 13.0 build,
+# which runs on NVIDIA drivers 580 and later.
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+torchaudio = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
