@@ -1,16 +1,21 @@
 /**
  * `feris book`: the books the classroom serves.
  */
-import { existsSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { checkBook } from "#classroom";
-import { booksDirs } from "./paths.js";
+import { parseArgs } from "node:util";
+import { checkBook, newBook } from "#classroom";
+import { booksDirs, studentBooksDir } from "./paths.js";
 
 const USAGE = `Usage: feris book <command>
 
 The books: each one is a folder with an index, lessons, a glossary and a reference.
 
 Commands:
+  new <book> [--title <title>] [--language <tag>]
+                 Create an empty book in the student folder. <book> names its folder:
+                 lowercase letters, digits and hyphens. The title defaults to the name and
+                 the language, a BCP 47 tag, to "en".
   check <book>   Report every mismatch between a book's index and its files. <book> is the
                  name of a book (the sample book or one in the student folder) or the path
                  to its folder.
@@ -58,6 +63,65 @@ function check(/** @type {string} */ book) {
 	return 0;
 }
 
+/** A book's name: its folder's name and part of its address, the same on every system. */
+const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** A language tag of the shape BCP 47 gives it, such as "en", "es" or "pt-BR". */
+const LANGUAGE = /^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/;
+
+/** Creates an empty book in the student folder, and never writes over one that exists. */
+function create(/** @type {string[]} */ args) {
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args,
+			allowPositionals: true,
+			options: { title: { type: "string" }, language: { type: "string" } },
+		});
+	} catch (error) {
+		// An option it does not know, or one left without its value.
+		if (!(error instanceof TypeError && "code" in error)) throw error;
+		if (!String(error.code).startsWith("ERR_PARSE_ARGS")) throw error;
+		console.error(`feris: ${error.message}`);
+		return 1;
+	}
+	const { values, positionals } = parsed;
+	const [name, ...extra] = positionals;
+	if (name === undefined || extra.length > 0) return usage();
+	const title = (values.title ?? name).trim();
+	const language = values.language ?? "en";
+	if (!NAME.test(name)) {
+		console.error(
+			`feris: "${name}" is not a book name. Use lowercase letters, digits and hyphens, as in "linear-algebra".`,
+		);
+		return 1;
+	}
+	if (title === "") {
+		console.error("feris: the book's title is empty.");
+		return 1;
+	}
+	if (!LANGUAGE.test(language)) {
+		console.error(`feris: "${language}" is not a language tag. Use one such as "en" or "es".`);
+		return 1;
+	}
+	const taken = booksDirs().find((dir) => existsSync(join(dir, name)));
+	if (taken !== undefined) {
+		console.error(`feris: there is already a book named "${name}", in ${join(taken, name)}.`);
+		return 1;
+	}
+	const dir = join(studentBooksDir(), name);
+	mkdirSync(studentBooksDir(), { recursive: true });
+	newBook(dir, { title, language });
+	console.log(`Created the book ${name} in ${dir}.`);
+	return 0;
+}
+
+/** Prints how to use `feris book`, and fails. */
+function usage() {
+	process.stderr.write(USAGE);
+	return 1;
+}
+
 /**
  * Runs a `feris book` command.
  *
@@ -67,6 +131,6 @@ function check(/** @type {string} */ book) {
 export function book(args) {
 	const [command, target, ...extra] = args;
 	if (command === "check" && target !== undefined && extra.length === 0) return check(target);
-	process.stderr.write(USAGE);
-	return 1;
+	if (command === "new") return create(args.slice(1));
+	return usage();
 }

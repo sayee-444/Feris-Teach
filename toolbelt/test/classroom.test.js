@@ -269,6 +269,23 @@ test("the classroom serves the student's books next to the sample book", async (
 	assert.equal(lesson.status, 200);
 });
 
+test("a book the student creates while the classroom is open is listed and served at once", async (t) => {
+	const { feris } = student(t);
+	const { url } = opened(feris("classroom", "start").stdout);
+
+	const created = feris("book", "new", "linear-algebra", "--title", "Linear algebra");
+	const library = await (await fetch(new URL("books/", url))).text();
+	const index = await fetch(new URL("books/linear-algebra/", url));
+	const glossary = await fetch(new URL("books/linear-algebra/glossary.html", url));
+
+	assert.equal(created.status, 0, created.stderr);
+	assert.match(library, /<a href="\/books\/linear-algebra\/">Linear algebra<\/a>/);
+	assert.match(library, /href="\/books\/basic-algebra\/"/);
+	assert.equal(index.status, 200);
+	assert.doesNotMatch(await index.text(), /mismatches/, "the new book does not match its index");
+	assert.equal(glossary.status, 200);
+});
+
 test("the classroom serves no file outside the books and its own, not even through Vite", async (t) => {
 	const { feris, dir } = student(t);
 	const { url } = opened(feris("classroom", "start").stdout);

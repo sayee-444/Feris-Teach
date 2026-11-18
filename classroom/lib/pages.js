@@ -32,8 +32,12 @@ const WORDS = {
 	},
 };
 
-/** The words for a book's language. */
-function wordsFor(/** @type {string} */ language) {
+/**
+ * The words for a book's language.
+ *
+ * @package
+ */
+export function wordsFor(/** @type {string} */ language) {
 	const base = /** @type {keyof typeof WORDS} */ (language.toLowerCase().split("-")[0]);
 	return WORDS[base] ?? WORDS.en;
 }
@@ -157,8 +161,12 @@ export function bookBar(name, index, file) {
 	].join("");
 }
 
-/** A whole page in the classroom's layout, shown in the shell's frame. */
-function page(
+/**
+ * A whole page in the classroom's layout, shown in the shell's frame.
+ *
+ * @package
+ */
+export function page(
 	/** @type {{ language: string, title: string, body: string }} */ { language, title, body },
 ) {
 	return `<!doctype html>

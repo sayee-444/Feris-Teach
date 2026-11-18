@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -175,4 +175,104 @@ test("a book in the student folder is checked by its name", (t) => {
 
 	assert.equal(status, 0);
 	assert.equal(stdout, "my-algebra matches its index: 2 chapters, 5 lessons.\n");
+});
+
+/**
+ * An empty student folder of its own for one test.
+ *
+ * @param {import("node:test").TestContext} t
+ */
+function emptyStudent(t) {
+	const dir = mkdtempSync(join(tmpdir(), "feris-student-"));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	return { dir, env: { FERIS_STUDENT_DIR: join(dir, "student") } };
+}
+
+test("a new book is created empty in the student folder, and matches its index", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	const created = feris(["book", "new", "linear-algebra", "--title", "Linear algebra"], env);
+	const checked = feris(["book", "check", "linear-algebra"], env);
+
+	assert.equal(created.stderr, "");
+	assert.equal(created.status, 0);
+	const folder = join(dir, "student", "books", "linear-algebra");
+	assert.equal(created.stdout, `Created the book linear-algebra in ${folder}.\n`);
+	assert.deepEqual(JSON.parse(readFileSync(join(folder, "index.json"), "utf8")), {
+		title: "Linear algebra",
+		language: "en",
+		chapters: [],
+		glossary: "glossary.html",
+		reference: [],
+	});
+	assert.equal(checked.stderr, "");
+	assert.equal(checked.stdout, "linear-algebra matches its index: 0 chapters, 0 lessons.\n");
+});
+
+test("a new book never takes the name of a book that exists, the student's or the repo's", (t) => {
+	const { dir, env } = emptyStudent(t);
+	feris(["book", "new", "linear-algebra", "--title", "Linear algebra"], env);
+	const index = join(dir, "student", "books", "linear-algebra", "index.json");
+	const before = readFileSync(index, "utf8");
+
+	const again = feris(["book", "new", "linear-algebra", "--title", "Something else"], env);
+	const sample = feris(["book", "new", "basic-algebra"], env);
+
+	assert.equal(again.status, 1);
+	assert.equal(
+		again.stderr,
+		`feris: there is already a book named "linear-algebra", in ${join(dir, "student", "books", "linear-algebra")}.\n`,
+	);
+	assert.equal(readFileSync(index, "utf8"), before);
+	assert.equal(sample.status, 1);
+	assert.match(sample.stderr, /^feris: there is already a book named "basic-algebra", in /);
+});
+
+test("a new book's name must be a folder name that works on every system", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	const refusals = ["Linear Algebra", "../outside", "álgebra", "a--b"].map((name) => {
+		const { status, stderr } = feris(["book", "new", name], env);
+		return { status, stderr };
+	});
+
+	assert.deepEqual(
+		refusals,
+		["Linear Algebra", "../outside", "álgebra", "a--b"].map((name) => ({
+			status: 1,
+			stderr: `feris: "${name}" is not a book name. Use lowercase letters, digits and hyphens, as in "linear-algebra".\n`,
+		})),
+	);
+	assert.equal(existsSync(join(dir, "student")), false, "something was written");
+});
+
+test("a new book's language must be a language tag, and its title must not be empty", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	const language = feris(["book", "new", "vectors", "--language", "Spanish please"], env);
+	const title = feris(["book", "new", "vectors", "--title", "  "], env);
+	const option = feris(["book", "new", "vectors", "--colour", "red"], env);
+
+	assert.deepEqual(
+		[language.status, language.stderr],
+		[1, 'feris: "Spanish please" is not a language tag. Use one such as "en" or "es".\n'],
+	);
+	assert.deepEqual([title.status, title.stderr], [1, "feris: the book's title is empty.\n"]);
+	assert.equal(option.status, 1);
+	assert.match(option.stderr, /^feris: Unknown option '--colour'/);
+	assert.equal(existsSync(join(dir, "student")), false, "something was written");
+});
+
+test("a new book in Spanish gets its glossary in Spanish", (t) => {
+	const { dir, env } = emptyStudent(t);
+
+	feris(["book", "new", "algebra-lineal", "--title", "Álgebra lineal", "--language", "es"], env);
+
+	const glossary = readFileSync(
+		join(dir, "student", "books", "algebra-lineal", "glossary.html"),
+		"utf8",
+	);
+	assert.match(glossary, /<html lang="es">/);
+	assert.match(glossary, /<title>Glosario<\/title>/);
+	assert.match(glossary, /<div class="series">Álgebra lineal<\/div>/);
 });
