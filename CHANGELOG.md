@@ -26,7 +26,7 @@ All notable changes to Feris-Teach are recorded here. The format follows [Keep a
 
 ### Changed
 
-- The voice speaks with Qwen3-TTS on an NVIDIA GPU, in place of Piper, which leaves the project. `feris voice start` loads one of the stock speakers of Qwen3-TTS CustomVoice, or a voice of the student's own in `student/voices/`, and says what is missing and how to fix it when there is no suitable GPU, engine or model. Each sentence streams: on an RTX 5090 it starts to sound about 100 ms after it is sent. The README states the GPU needed: an NVIDIA RTX 30 series or newer with 8 GB of VRAM.
+- The voice speaks with Qwen3-TTS on an NVIDIA GPU, in place of Piper, which leaves the project. `feris voice start` loads one of the stock voices of Qwen3-TTS CustomVoice, or a voice of the student's own in `student/voices/`, and says what is missing and how to fix it when there is no suitable GPU, engine or model. Each sentence streams: on an RTX 5090 it starts to sound about 100 ms after it is sent. The README states the GPU needed: an NVIDIA RTX 30 series or newer with 8 GB of VRAM.
 - Feris-Teach is built for its owner alone (ADR-0005): the docs speak only to the owner and their agents, and its voice runs on an NVIDIA GPU.
 
 [Unreleased]: https://github.com/sayee-444/Feris-Teach/commits/main

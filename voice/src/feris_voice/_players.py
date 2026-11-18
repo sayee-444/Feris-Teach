@@ -54,6 +54,7 @@ class _ProcessPlayback:
 
     def __init__(self, command: list[str], sound: Sound) -> None:
         self._stopped = False
+        self._failed: Exception | None = None
         self._process = subprocess.Popen(
             command,
             stdin=subprocess.PIPE,
@@ -67,17 +68,22 @@ class _ProcessPlayback:
         )
         self._feeding.start()
 
-    @staticmethod
-    def _feed(sound: Sound, stdin: IO[bytes]) -> None:
-        # A stopped player closes its end of the pipe.
-        with contextlib.suppress(OSError, ValueError), stdin:
-            for piece in sound.pieces():
-                _ = stdin.write(piece)
-                stdin.flush()
+    def _feed(self, sound: Sound, stdin: IO[bytes]) -> None:
+        try:
+            # A stopped player closes its end of the pipe.
+            with contextlib.suppress(OSError, ValueError), stdin:
+                for piece in sound.pieces():
+                    _ = stdin.write(piece)
+                    stdin.flush()
+        except Exception as error:
+            self._failed = error
+            self.stop()
 
     def wait(self) -> bool:
         self._feeding.join()
         code = self._process.wait()
+        if self._failed is not None:
+            raise self._failed
         return code == 0 and not self._stopped
 
     def stop(self) -> None:
@@ -121,25 +127,32 @@ if sys.platform == "win32":
             self._lock = threading.Lock()
             self._path: Path | None = None
             self._seconds = 0.0
+            self._failed: Exception | None = None
             self._starting = threading.Thread(
                 target=self._start, args=(sound,), name="play", daemon=True
             )
             self._starting.start()
 
         def _start(self, sound: Sound) -> None:
-            samples = b"".join(sound.pieces())
-            with self._lock:
-                if self._over.is_set() or samples == b"":
-                    return
-                self._path = _wav(sound.rate, samples)
-                self._seconds = len(samples) / 2 / sound.rate
-                winsound.PlaySound(
-                    str(self._path),
-                    winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT,
-                )
+            try:
+                samples = b"".join(sound.pieces())
+                with self._lock:
+                    if self._over.is_set() or samples == b"":
+                        return
+                    self._path = _wav(sound.rate, samples)
+                    self._seconds = len(samples) / 2 / sound.rate
+                    winsound.PlaySound(
+                        str(self._path),
+                        winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT,
+                    )
+            except Exception as error:
+                self._failed = error
 
         def wait(self) -> bool:
             self._starting.join()
+            if self._failed is not None:
+                self.stop()
+                raise self._failed
             stopped = self._over.wait(self._seconds)
             with self._lock:
                 self._over.set()

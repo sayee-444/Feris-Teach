@@ -5,11 +5,11 @@
 [engine]
 # One of the engines in `voice/src/feris_voice/engines/`.
 name = "qwen"
-# A speaker of Qwen3-TTS CustomVoice (aiden, dylan, eric, ono_anna, ryan, serena, sohee,
+# A stock voice of Qwen3-TTS CustomVoice (aiden, dylan, eric, ono_anna, ryan, serena, sohee,
 # uncle_fu, vivian), whose model is downloaded into the Hugging Face cache (see the README); or
 # the name of a voice in `student/voices/`, such as one trained in the studio.
 voice = "serena"
-# For a voice in `student/voices/` with several speakers: which one speaks.
+# For a voice in `student/voices/` whose model has several speakers: which one speaks.
 # speaker = "<speaker>"
 # The language spoken.
 language = "spanish"

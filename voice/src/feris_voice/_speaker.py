@@ -103,7 +103,7 @@ class _Making:
             self._cut = True
             self._changed.notify_all()
 
-    def started(self) -> bool:
+    def wait_started(self) -> bool:
         """Waits until the first piece is made. False when none will be: the engine failed, or
         the sound was cut."""
         with self._changed:
@@ -219,15 +219,16 @@ class Speaker:
         unheard = self._waiting()
         last_heard = self._last_heard if self._speaking is None else self._speaking.sentence
         cut = self._speaking is not None or len(unheard) > 0
-        for sound in (self._preparing, self._speaking, *self._queue):
-            if sound is not None:
-                sound.cut()
-        self._queue.clear()
+        # The playback stops first, so that it knows its sound was cut, not all made.
         if self._playback is not None:
             try:
                 self._playback.stop()
             except Exception:
                 _log(f"could not stop {last_heard!r}:\n{traceback.format_exc()}")
+        for sound in (self._preparing, self._speaking, *self._queue):
+            if sound is not None:
+                sound.cut()
+        self._queue.clear()
         self._cuts += 1
         self._preparing = self._speaking = self._playback = self._last_heard = None
         return Interruption(cut, last_heard if cut else None, unheard)
@@ -242,7 +243,7 @@ class Speaker:
                 sound = self._queue.popleft()
                 self._preparing = sound
                 cuts = self._cuts
-            started = sound.started()
+            started = sound.wait_started()
             with self._changed:
                 if cuts != self._cuts:
                     continue

@@ -4,11 +4,11 @@ codec frames (a third of a second), so that a sentence sounds well before it is 
 
 Settings:
 
-- `voice`: one of the speakers of Qwen3-TTS-12Hz-1.7B-CustomVoice, the stock model, downloaded
-  into the Hugging Face cache; or the name of a voice in the voices folder, a folder holding a
-  CustomVoice model of its own, such as a voice trained in the studio.
-- `speaker`: which speaker of a voice in the voices folder speaks. It may be left out when the
-  voice has one speaker, or one named after its folder.
+- `voice`: one of the stock voices, the speakers of Qwen3-TTS-12Hz-1.7B-CustomVoice, the stock
+  model, downloaded into the Hugging Face cache; or the name of a voice in the voices folder, a
+  folder holding a CustomVoice model of its own, such as a voice trained in the studio.
+- `speaker`: which of the speakers of a voice in the voices folder speaks. It may be left out
+  when the model has one speaker, or one named after its folder.
 - `language`: the language spoken, `spanish` unless set.
 """
 
@@ -17,12 +17,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, cast
 
+import numpy as np
+import torch
+from huggingface_hub import try_to_load_from_cache
+
 from feris_voice import Audio, VoiceError
 
 MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 """The stock model on Hugging Face, whose speakers are the stock voices."""
 
-SPEAKERS = (
+VOICES = (
     "aiden",
     "dylan",
     "eric",
@@ -33,7 +37,7 @@ SPEAKERS = (
     "uncle_fu",
     "vivian",
 )
-"""The stock model's speakers, known before it is downloaded."""
+"""The stock voices: the stock model's speakers, known before it is downloaded."""
 
 CHUNK = 4
 """Codec frames per streamed piece: at 12 frames a second, a third of a second of sound."""
@@ -89,8 +93,6 @@ class QwenEngine:
     voice: str
 
     def synthesise(self, sentence: str) -> Iterator[Audio]:
-        import numpy as np
-
         for samples, rate, _timing in self.model.generate_custom_voice_streaming(
             text=sentence, speaker=self.speaker, language=self.language, chunk_size=CHUNK
         ):
@@ -109,8 +111,6 @@ def _text(settings: dict[str, object], key: str) -> str | None:
 
 def _stock_model() -> tuple[Path | None, str | None]:
     """The stock model's folder in the Hugging Face cache, or what to do to download it."""
-    from huggingface_hub import try_to_load_from_cache
-
     found = [try_to_load_from_cache(MODEL, name) for name in _FILES]
     if all(isinstance(path, str) for path in found):
         return Path(str(found[0])).parent, None
@@ -122,8 +122,6 @@ def _stock_model() -> tuple[Path | None, str | None]:
 
 def _gpu() -> str | None:
     """What is wrong with the GPU for the voice, or None when it will do."""
-    import torch
-
     if not torch.cuda.is_available():
         return (
             f"there is no NVIDIA GPU that CUDA can use. The Qwen voice needs {MINIMUM}, and "
@@ -141,7 +139,12 @@ def _gpu() -> str | None:
 
 
 def _speaker(wrapped: _Wrapped, voice: str, chosen: str | None) -> str:
+    # qwen-tts gives the names in lower case.
     speakers = sorted(wrapped.get_supported_speakers() or [])
+    if not speakers:
+        raise VoiceError(
+            f'the Qwen voice "{voice}" has no speakers: it is not a Qwen3-TTS CustomVoice model.'
+        )
     if chosen is not None:
         if chosen.lower() not in speakers:
             raise VoiceError(
@@ -180,14 +183,14 @@ def load(settings: dict[str, object], voices: Path) -> QwenEngine:
                 f'the Qwen voice "{voice}" in {voices} is not whole: it lacks '
                 + f"{', '.join(missing)}. Download or train it again."
             )
-    elif voice.lower() in SPEAKERS:
+    elif voice.lower() in VOICES:
         folder, missing_model = _stock_model()
         if missing_model is not None:
             problems.append(missing_model)
     else:
         raise VoiceError(
-            f'there is no Qwen voice "{voice}": it is not one of CustomVoice\'s speakers '
-            + f"({', '.join(SPEAKERS)}), nor a voice in {voices}."
+            f'there is no Qwen voice "{voice}": it is not one of the stock voices of '
+            + f"CustomVoice ({', '.join(VOICES)}), nor a voice in {voices}."
         )
     gpu = _gpu()
     if gpu is not None:
@@ -197,11 +200,23 @@ def load(settings: dict[str, object], voices: Path) -> QwenEngine:
             "the Qwen voice cannot start:\n" + "\n".join(f"  - {problem}" for problem in problems)
         )
 
-    # faster-qwen3-tts is imported only now: importing it is slow and noisy.
-    # The library ships no types: _Model says what the engine uses of it.
-    from faster_qwen3_tts import FasterQwen3TTS  # pyright: ignore[reportMissingTypeStubs]
+    # faster-qwen3-tts is imported only now, for its import is slow and noisy. The library
+    # ships no types: _Model says what the engine uses of it.
+    try:
+        from faster_qwen3_tts import FasterQwen3TTS  # pyright: ignore[reportMissingTypeStubs]
+    except ImportError as error:
+        raise VoiceError(
+            f"faster-qwen3-tts is not installed: {error}. Install it, from the repo's folder, "
+            + "with:\n  uv sync --project voice"
+        ) from error
 
-    loaded = cast("object", FasterQwen3TTS.from_pretrained(str(folder)))
+    try:
+        loaded = cast("object", FasterQwen3TTS.from_pretrained(str(folder)))
+    except (OSError, ValueError, KeyError) as error:
+        raise VoiceError(
+            f'the Qwen voice "{voice}" in {folder} could not be loaded: {error}. Download or '
+            + "train it again."
+        ) from error
     model = cast("_Model", loaded)
     wrapped = cast("_Wrapped", getattr(loaded, "model"))  # noqa: B009
     speaker = _speaker(wrapped, voice, chosen)

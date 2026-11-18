@@ -34,7 +34,7 @@ The last command prints the classroom's address. Open it in a browser to read th
 
 ## The voice
 
-Feris's replies are spoken aloud by a local voice: the **voice service**, which keeps a speech engine loaded on the GPU while it runs. The engine is Qwen3-TTS, run by [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts), which streams each sentence as it is made, so the voice starts about a tenth of a second after the teacher writes. Its voice will be the **default voice**, a Qwen fine-tune the owner trains in the studio (#9); until then it is one of the stock speakers of Qwen3-TTS CustomVoice. Only the **spoken version** of a reply is spoken: the teacher marks it between `<spoken>` and `</spoken>`, and code, tables and links' addresses are never read out.
+Feris's replies are spoken aloud by a local voice: the **voice service**, which keeps a speech engine loaded on the GPU while it runs. The engine is Qwen3-TTS, run by [faster-qwen3-tts](https://github.com/andimarafioti/faster-qwen3-tts), which streams each sentence as it is made, so the voice starts about a tenth of a second after the teacher writes. Its voice will be the **default voice**, a Qwen fine-tune the owner trains in the studio (#9); until then it is one of the stock voices of Qwen3-TTS CustomVoice. Only the **spoken version** of a reply is spoken: the teacher marks it between `<spoken>` and `</spoken>`, and code, tables and links' addresses are never read out.
 
 1. **Install the engine.** uv installs it, with PyTorch for CUDA, into `voice/.venv` the first time the voice service starts. To do it beforehand, run `uv sync --project voice`.
 2. **Download the model** into the Hugging Face cache (about 4.5 GB):
@@ -63,7 +63,7 @@ On Linux the sound goes out through PipeWire (`pw-play`), PulseAudio (`paplay`) 
 voice = "vivian"
 ```
 
-The voice can be one of CustomVoice's speakers (`aiden`, `dylan`, `eric`, `ono_anna`, `ryan`, `serena`, `sohee`, `uncle_fu`, `vivian`) or a voice of your own in `student/voices/<name>/`, a folder holding a Qwen3-TTS CustomVoice model, such as one trained in the studio.
+The voice can be one of the stock voices of CustomVoice (`aiden`, `dylan`, `eric`, `ono_anna`, `ryan`, `serena`, `sohee`, `uncle_fu`, `vivian`) or a voice of your own in `student/voices/<name>/`, a folder holding a Qwen3-TTS CustomVoice model, such as one trained in the studio.
 
 `feris` is the teacher's toolbelt: one command-line tool for everything outside the conversation. `npm run feris -- --help` lists what it can do.
 

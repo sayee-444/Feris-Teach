@@ -141,8 +141,8 @@ test("a Qwen voice that is neither a stock speaker nor in the voices folder stop
 	assert.equal(status, 1);
 	assert.ok(
 		stderr.includes(
-			'there is no Qwen voice "nadie": it is not one of CustomVoice\'s speakers (aiden, ' +
-				"dylan, eric, ono_anna, ryan, serena, sohee, uncle_fu, vivian), nor a voice in " +
+			'there is no Qwen voice "nadie": it is not one of the stock voices of CustomVoice ' +
+				"(aiden, dylan, eric, ono_anna, ryan, serena, sohee, uncle_fu, vivian), nor a voice in " +
 				join(dir, "voices"),
 		),
 		stderr,
